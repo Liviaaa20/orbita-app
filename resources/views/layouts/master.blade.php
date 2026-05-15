@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ORBITA | Dashboard</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  <style>
+    /* Warna Utama BMKG: Biru Navy */
+    :root {
+      --bmkg-blue: #003366;
+      --bmkg-blue-light: #00509e;
+      --bmkg-accent: #f8f9fa;
+    }
+
+    /* Sidebar - Biru Navy Profesional */
+    .main-sidebar { 
+        background-color: var(--bmkg-blue) !important; 
+    }
+    .brand-link { 
+        background-color: var(--bmkg-blue) !important; 
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        color: #fff !important;
+    }
+    
+    /* Navigasi Sidebar */
+    .nav-sidebar .nav-link { 
+        color: #ced4da !important; 
+        border-radius: 8px !important; 
+        margin: 2px 10px; 
+    }
+    .nav-sidebar .nav-link:hover {
+        background-color: rgba(255,255,255,0.1) !important;
+        color: #fff !important;
+    }
+    .nav-sidebar .nav-link.active { 
+        background-color: var(--bmkg-blue-light) !important; 
+        color: #fff !important; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    .nav-header {
+        color: #888 !important;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    /* Navbar Atas */
+    .main-header {
+        background-color: #ffffff !important;
+        border-bottom: 2px solid var(--bmkg-blue) !important;
+    }
+    
+    /* Content Area */
+    .content-wrapper { 
+        background-color: #f4f6f9; 
+    }
+
+    /* Dropdown Profil Khas */
+    .user-menu .dropdown-menu {
+        border-radius: 12px !important;
+        border: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+    }
+    .user-header {
+        background-color: var(--bmkg-blue) !important;
+        color: white !important;
+    }
+    
+    /* Perbaikan Icon */
+    .nav-icon {
+        color: inherit !important;
+    }
+  </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+<nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+    </li>
+    <li class="nav-item d-none d-sm-inline-block">
+      <span class="nav-link font-weight-bold text-dark">Dashboard Monitoring Alat BMKG</span>
+    </li>
+  </ul>
+
+  <ul class="navbar-nav ml-auto">
+    <li class="nav-item dropdown user-menu">
+      <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+        <i class="fas fa-user-circle fa-lg mr-2 text-secondary"></i>
+        <span class="d-none d-md-inline font-weight-bold">{{ Auth::user()->username ?? 'User' }}</span>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right border-0 shadow-sm">
+        <li class="user-header bg-light">
+          <i class="fas fa-user-circle fa-4x text-secondary mb-2"></i>
+          <p>
+            {{ Auth::user()->username ?? 'User' }}
+<!-- Mengambil kolom nama_role dari relasi role -->
+<small>Role: {{ Auth::user()->role->nama_role ?? 'Admin' }}</small>          </p>
+        </li>
+        <li class="user-footer d-flex justify-content-between">
+          <a href="{{ route('profile') }}" class="btn btn-default btn-flat border-0 rounded">
+            <i class="fas fa-id-card mr-1"></i> Profil
+          </a>
+          <a href="#" class="btn btn-default btn-flat border-0 rounded text-danger" 
+             onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+            <i class="fas fa-sign-out-alt mr-1"></i> Keluar
+          </a>
+          <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+              @csrf
+          </form>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+
+  <aside class="main-sidebar sidebar-light-primary elevation-1">
+    <a href="#" class="brand-link">
+      <img src="{{ asset('assets/dist/img/logo.png') }}" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+      <span class="brand-text font-weight-bold ml-2">ORBITA</span>
+    </a>
+
+    <div class="sidebar">
+    <nav class="mt-3">
+    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+    
+    @php
+      $userRole = strtolower(Auth::user()->role->nama_role ?? '');
+      $isAdmin = ($userRole == 'admin');
+      $isTeknisi = ($userRole == 'teknisi');
+      $isKepalaUnit = in_array($userRole, ['kepala unit', 'kepala_unit']);
+      
+      // Role operasional yang diizinkan menginput perbaikan
+      $isStaffOps = in_array($userRole, ['tu', 'tata usaha', 'observer', 'forecaster', 'forcaster']);
+    @endphp
+
+    {{-- 1. DASHBOARD (Semua Role) --}}
+    <li class="nav-item">
+      <a href="{{ route('dashboard') }}" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-home"></i> <p>Dashboard</p>
+      </a>
+    </li>
+
+    {{-- 2. MASTER USER (Hanya Admin) --}}
+    @if($isAdmin)
+    <li class="nav-item {{ request()->is('role*') || request()->is('user*') ? 'menu-open' : '' }}">
+        <a href="#" class="nav-link {{ request()->is('role*') || request()->is('user*') ? 'active' : '' }}">
+          <i class="nav-icon fas fa-users"></i>
+          <p>Master User <i class="right fas fa-angle-left"></i></p>
+        </a>
+        <ul class="nav nav-treeview">
+          <li class="nav-item">
+            <a href="{{ route('user.index') }}" class="nav-link px-4 {{ request()->is('user*') ? 'active' : '' }}">
+              <i class="far fa-circle nav-icon"></i> <p>User</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ route('role.index') }}" class="nav-link px-4 {{ request()->is('role*') ? 'active' : '' }}">
+              <i class="far fa-circle nav-icon"></i> <p>Role</p>
+            </a>
+          </li>
+        </ul>
+    </li>
+    @endif
+
+    {{-- 3. MASTER DATA (Admin & Teknisi) --}}
+    @if($isAdmin || $isTeknisi)
+    <li class="nav-item {{ request()->is('kategori*') || request()->is('sub-kategori*')|| request()->is('data-alat*') || request()->is('pengecekan*') ? 'menu-open' : '' }}">
+        <a href="#" class="nav-link {{ request()->is('kategori*') || request()->is('sub-kategori*')|| request()->is('data-alat*') || request()->is('pengecekan*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-database"></i>
+            <p>Master Data <i class="right fas fa-angle-left"></i></p>
+        </a>
+        <ul class="nav nav-treeview">
+            <li class="nav-item">
+                <a href="{{ route('kategori.index') }}" class="nav-link px-4 {{ request()->is('kategori*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i> <p>Kategori</p>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('sub-kategori.index') }}" class="nav-link px-4 {{ request()->is('sub-kategori*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i> <p>Sub Kategori</p>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('data-alat.index') }}" class="nav-link px-4 {{ request()->is('data-alat*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i> <p>Data Alat</p>
+                </a>
+            </li>
+            <li class="nav-item">
+            <a href="{{ route('pengecekan.index', ['type' => 'harian']) }}" class="nav-link px-4 {{ request()->is('pengecekan*') ? 'active' : '' }}">
+    <i class="fas fa-clipboard-check nav-icon text-info"></i> <p>Pengecekan</p>
+</a>
+            </li>
+        </ul>
+    </li>
+
+    {{-- 4. MAINTENANCE (Admin & Teknisi) --}}
+    <li class="nav-item {{ request()->is('maintenance*') ? 'menu-open' : '' }}">
+        <a href="#" class="nav-link {{ request()->is('maintenance*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-tools"></i>
+            <p>Maintenance <i class="right fas fa-angle-left"></i></p>
+        </a>
+        <ul class="nav nav-treeview">
+            <li class="nav-item">
+                <a href="{{ route('maintenance.harian') }}" class="nav-link px-4 {{ request()->is('maintenance/harian*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i> <p>Harian</p>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('maintenance.mingguan') }}" class="nav-link px-4 {{ request()->is('maintenance/mingguan*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i> <p>Mingguan</p>
+                </a>
+            </li>
+        </ul>
+    </li>
+    @endif
+
+    {{-- 5. JADWAL DINAS (Semua kecuali TU/Observer/Forecaster jika hanya ingin dibatasi) --}}
+    @if($isAdmin || $isTeknisi || $isKepalaUnit)
+    <li class="nav-item">
+      <a href="#" class="nav-link">
+        <i class="nav-icon fas fa-calendar-alt"></i> <p>Jadwal Dinas</p>
+      </a>
+    </li>
+    @endif
+
+    {{-- 6. PERMINTAAN PERBAIKAN (Semua Role Bisa Lihat Index-nya) --}}
+    <li class="nav-item">
+        <a href="{{ route('perbaikan.index') }}" class="nav-link {{ request()->is('perbaikan*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-tools text-warning"></i>
+            <p>Permintaan Perbaikan</p>
+        </a>
+    </li>
+
+    {{-- 7. KALIBRASI & HISTORI (Admin & Teknisi) --}}
+    @if($isAdmin || $isTeknisi)
+    <li class="nav-item">
+        <a href="#" class="nav-link"><i class="nav-icon fas fa-wave-square"></i> <p>Kalibrasi</p></a>
+    </li>
+    <li class="nav-item">
+        <a href="{{ route('histori.index') }}" class="nav-link {{ request()->is('histori-operasional*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-history"></i> <p>Histori Operasional</p>
+        </a>
+    </li>
+    @endif
+
+    {{-- 8. LOGBOOK (Admin, Teknisi, Kepala Unit) --}}
+    @if($isAdmin || $isTeknisi || $isKepalaUnit)
+<li class="nav-item">
+  <a href="#" class="nav-link {{ request()->is('logbook*') ? 'active' : '' }}">
+    <i class="nav-icon fas fa-book"></i> 
+    <p>Logbook</p>
+  </a>
+</li>
+@endif
+
+</ul>
+</nav>
+    </div>
+  </aside>
+
+  <div class="content-wrapper">
+    <div class="content pt-4">
+      @yield('content')
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.colVis.min.js"></script>
+
+@stack('scripts')
+
+</body>
+</html>
