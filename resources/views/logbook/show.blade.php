@@ -1,10 +1,19 @@
 @extends('layouts.master')
 
 @section('content')
-<div class="container-fluid">
+@php
+    $userRole      = strtolower(Auth::user()->role->nama_role ?? '');
+    $isAdmin       = $userRole === 'admin';
+    $isKanit       = in_array($userRole, ['kepala unit', 'kepala_unit', 'kanit']);
+    $isKoordinator = $userRole === 'koordinator';
+@endphp
 
-    {{-- ── BREADCRUMB & JUDUL ── --}}
-    <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="container-fluid" id="kontenLogbook">
+
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- BREADCRUMB & JUDUL                                     --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="d-flex align-items-center justify-content-between mb-3 no-print">
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent p-0 mb-1">
@@ -23,22 +32,175 @@
             </h4>
             <small class="text-muted">
                 {{ $logbook->lokasi_tempat }} &mdash; {{ $bulanCarbon->isoFormat('MMMM YYYY') }}
+                @if($logbook->subKategori)
+                    &mdash; <span class="badge badge-info">{{ $logbook->subKategori->nama_sub_kategori }}</span>
+                @endif
             </small>
         </div>
-
-        {{-- Tombol Kembali + Cetak --}}
-        <div>
-            <a href="{{ route('logbook.index') }}" class="btn btn-light border shadow-sm mr-2">
+        <div class="d-flex" style="gap:8px;">
+            <a href="{{ route('logbook.index') }}" class="btn btn-light border shadow-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Kembali
             </a>
+            @if($logbook->bisaDownload())
+                <a href="{{ route('download-pdf', $logbook->id) }}"
+                   class="btn btn-danger shadow-sm font-weight-bold"
+                   target="_blank">
+                    <i class="fas fa-file-pdf mr-1"></i> Download PDF
+                </a>
+            @endif
             <button onclick="window.print()" class="btn btn-light border shadow-sm">
                 <i class="fas fa-print mr-1"></i> Cetak
             </button>
         </div>
     </div>
 
-    {{-- ── INFO CARDS ── --}}
-    <div class="row mb-3">
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- PANEL STATUS APPROVAL                                  --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="card shadow-sm border-0 rounded-lg mb-4 no-print">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+
+                {{-- Status Badge --}}
+                <div class="d-flex align-items-center" style="gap:10px;">
+                    <span class="font-weight-bold text-muted small text-uppercase">Status Logbook:</span>
+                    <span class="badge badge-{{ $logbook->getBadgeStatus() }} px-3 py-2" style="font-size:0.85rem;">
+                        {{ $logbook->getLabelStatus() }}
+                    </span>
+                </div>
+
+                {{-- Timeline Progress --}}
+                <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
+                    {{-- Step 1: Draft / Dibuat --}}
+                    <div class="d-flex align-items-center" style="gap:4px;">
+                        <span class="badge px-2 py-1
+                            {{ in_array($logbook->status, ['draft','pending_kanit','approved_kanit','rejected_kanit','pending_koordinator','approved_final','rejected_koordinator']) ? 'badge-success' : 'badge-light border' }}">
+                            <i class="fas fa-edit mr-1"></i>Dibuat
+                        </span>
+                        <i class="fas fa-chevron-right text-muted" style="font-size:0.65rem;"></i>
+                    </div>
+
+                    {{-- Step 2: Diajukan ke Kanit --}}
+                    <div class="d-flex align-items-center" style="gap:4px;">
+                        <span class="badge px-2 py-1
+                            @if($logbook->status === 'rejected_kanit') badge-danger
+                            @elseif(in_array($logbook->status, ['pending_kanit','approved_kanit','pending_koordinator','approved_final','rejected_koordinator'])) badge-success
+                            @else badge-light border @endif">
+                            <i class="fas fa-paper-plane mr-1"></i>Kanit
+                        </span>
+                        <i class="fas fa-chevron-right text-muted" style="font-size:0.65rem;"></i>
+                    </div>
+
+                    {{-- Step 3: Koordinator --}}
+                    <div class="d-flex align-items-center" style="gap:4px;">
+                        <span class="badge px-2 py-1
+                            @if($logbook->status === 'rejected_koordinator') badge-danger
+                            @elseif(in_array($logbook->status, ['pending_koordinator','approved_final'])) badge-success
+                            @else badge-light border @endif">
+                            <i class="fas fa-user-tie mr-1"></i>Koordinator
+                        </span>
+                        <i class="fas fa-chevron-right text-muted" style="font-size:0.65rem;"></i>
+                    </div>
+
+                    {{-- Step 4: Final --}}
+                    <span class="badge px-2 py-1 {{ $logbook->status === 'approved_final' ? 'badge-success' : 'badge-light border' }}">
+                        <i class="fas fa-check-double mr-1"></i>Final
+                    </span>
+                </div>
+
+                {{-- Tombol Aksi Approval (sesuai role & status) --}}
+                <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
+
+                    {{-- ADMIN: Submit --}}
+                    @if($isAdmin && $logbook->bisaSubmit())
+                        <form action="{{ route('logbook.submit', $logbook->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit"
+                                    class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3"
+                                    onclick="return confirm('Ajukan logbook ini ke Kepala Unit?')">
+                                <i class="fas fa-paper-plane mr-1"></i> Ajukan ke Kanit
+                            </button>
+                        </form>
+                    @endif
+
+                    {{-- KANIT: Approve / Reject --}}
+                    @if($isKanit && $logbook->status === 'pending_kanit')
+                        <button type="button"
+                                class="btn btn-success btn-sm font-weight-bold shadow-sm px-3"
+                                data-toggle="modal" data-target="#modalApproveKanit"
+                                onclick="setModalId('modalApproveKanitForm', '{{ route('logbook.approve-kanit', $logbook->id) }}')">
+                            <i class="fas fa-check mr-1"></i> Setujui
+                        </button>
+                        <button type="button"
+                                class="btn btn-danger btn-sm font-weight-bold shadow-sm px-3"
+                                data-toggle="modal" data-target="#modalRejectKanit"
+                                onclick="setModalId('modalRejectKanitForm', '{{ route('logbook.reject-kanit', $logbook->id) }}')">
+                            <i class="fas fa-times mr-1"></i> Tolak
+                        </button>
+                    @endif
+
+                    {{-- KOORDINATOR: Approve / Reject --}}
+                    @if($isKoordinator && $logbook->status === 'pending_koordinator')
+                        <button type="button"
+                                class="btn btn-success btn-sm font-weight-bold shadow-sm px-3"
+                                data-toggle="modal" data-target="#modalApproveKoordinator"
+                                onclick="setModalId('modalApproveKoordinatorForm', '{{ route('logbook.approve-koordinator', $logbook->id) }}')">
+                            <i class="fas fa-check-double mr-1"></i> Setujui Final
+                        </button>
+                        <button type="button"
+                                class="btn btn-danger btn-sm font-weight-bold shadow-sm px-3"
+                                data-toggle="modal" data-target="#modalRejectKoordinator"
+                                onclick="setModalId('modalRejectKoordinatorForm', '{{ route('logbook.reject-koordinator', $logbook->id) }}')">
+                            <i class="fas fa-times mr-1"></i> Tolak
+                        </button>
+                    @endif
+
+                </div>
+            </div>
+
+            {{-- Catatan Kanit / Koordinator (jika ada) --}}
+            @if($logbook->catatan_kanit || $logbook->catatan_koordinator)
+                <hr class="my-3">
+                <div class="row">
+                    @if($logbook->catatan_kanit)
+                        <div class="col-md-6">
+                            <div class="alert
+                                {{ in_array($logbook->status, ['rejected_kanit']) ? 'alert-danger' : 'alert-info' }}
+                                py-2 px-3 mb-0 small">
+                                <strong>
+                                    <i class="fas fa-comment-alt mr-1"></i>
+                                    Catatan Kanit
+                                    ({{ $logbook->approvedKanitOleh->name ?? '-' }},
+                                     {{ $logbook->approved_kanit_at ? $logbook->approved_kanit_at->isoFormat('D MMM YYYY HH:mm') : '-' }}):
+                                </strong>
+                                <br>{{ $logbook->catatan_kanit }}
+                            </div>
+                        </div>
+                    @endif
+                    @if($logbook->catatan_koordinator)
+                        <div class="col-md-6">
+                            <div class="alert
+                                {{ in_array($logbook->status, ['rejected_koordinator']) ? 'alert-danger' : 'alert-success' }}
+                                py-2 px-3 mb-0 small">
+                                <strong>
+                                    <i class="fas fa-comment-alt mr-1"></i>
+                                    Catatan Koordinator
+                                    ({{ $logbook->approvedKoordinatorOleh->name ?? '-' }},
+                                     {{ $logbook->approved_koordinator_at ? $logbook->approved_koordinator_at->isoFormat('D MMM YYYY HH:mm') : '-' }}):
+                                </strong>
+                                <br>{{ $logbook->catatan_koordinator }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- INFO CARDS                                             --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="row mb-3 no-print">
         <div class="col-md-3">
             <div class="info-box shadow-sm border-0 mb-0">
                 <span class="info-box-icon bg-info"><i class="fas fa-calendar-alt"></i></span>
@@ -63,11 +225,11 @@
         </div>
         <div class="col-md-3">
             <div class="info-box shadow-sm border-0 mb-0">
-                <span class="info-box-icon bg-warning"><i class="fas fa-tools"></i></span>
+                <span class="info-box-icon bg-warning"><i class="fas fa-microchip"></i></span>
                 <div class="info-box-content">
-                    <span class="info-box-text text-muted small">Jenis Alat</span>
+                    <span class="info-box-text text-muted small">Jumlah Alat</span>
                     <span class="info-box-number" style="font-size:1rem;">
-                        {{ $logbook->jenis_alat }}
+                        {{ $alats->count() }} alat
                     </span>
                 </div>
             </div>
@@ -85,13 +247,16 @@
         </div>
     </div>
 
-    {{-- ── FILTER BULAN ── --}}
-    <div class="card shadow-sm border-0 rounded-lg mb-3">
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- FILTER BULAN                                           --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="card shadow-sm border-0 rounded-lg mb-3 no-print">
         <div class="card-body p-3">
             <form action="{{ route('logbook.show', $logbook->id) }}" method="GET" class="d-flex align-items-end">
                 <div class="mr-3">
                     <label class="mb-1 small font-weight-bold text-muted text-uppercase">Pilih Bulan</label>
-                    <select name="bulan" class="form-control shadow-none border custom-select" style="min-width:200px;" onchange="this.form.submit()">
+                    <select name="bulan" class="form-control shadow-none border custom-select"
+                            style="min-width:200px;" onchange="this.form.submit()">
                         @foreach($bulanList as $bln)
                             <option value="{{ $bln['value'] }}" {{ $bulanParam == $bln['value'] ? 'selected' : '' }}>
                                 {{ $bln['label'] }}
@@ -106,66 +271,104 @@
         </div>
     </div>
 
-    {{-- ── TABEL LOGBOOK HARIAN ── --}}
-    <div class="card shadow-sm border-0 rounded-lg overflow-hidden mb-4">
-        <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
-            <div>
-                <h5 class="font-weight-bold m-0 text-dark">
-                    {{ strtoupper($logbook->jenis_logbook) }}
-                </h5>
-                <small class="text-muted">
-                    {{ strtoupper($logbook->lokasi_tempat) }} &mdash;
-                    BULAN {{ strtoupper($bulanCarbon->isoFormat('MMMM YYYY')) }}
-                </small>
-            </div>
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- HEADER CETAK (hanya muncul saat print/PDF)            --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="print-only mb-3">
+        <table width="100%" style="border:none;">
+            <tr>
+                <td style="width:15%; text-align:center; vertical-align:middle;">
+                    {{-- Logo BMKG (sesuaikan path jika ada) --}}
+                    <img src="{{ public_path('assets/dist/img/logo.png') }}" height="70" alt="Logo">
+                </td>
+                <td style="text-align:center; vertical-align:middle;">
+                    <div style="font-size:14pt; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">
+                        {{ $logbook->jenis_logbook }}
+                    </div>
+                    <div style="font-size:10pt; margin-top:4px;">
+                        {{ strtoupper($logbook->jenis_alat) }}
+                    </div>
+                    <div style="font-size:10pt;">
+                        {{ strtoupper($logbook->lokasi_tempat) }}
+                    </div>
+                    <div style="font-size:10pt;">
+                        PERIODE: {{ strtoupper($logbook->periode_tersedia) }}
+                    </div>
+                    <div style="font-size:10pt;">
+                        BULAN: {{ strtoupper($bulanCarbon->isoFormat('MMMM YYYY')) }}
+                    </div>
+                </td>
+                <td style="width:15%;"></td>
+            </tr>
+        </table>
+        <hr style="border-top: 2px solid #000; margin-top:8px;">
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- TABEL LOGBOOK HARIAN                                   --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="card shadow-sm border-0 rounded-lg overflow-hidden mb-4 logbook-card-screen">
+        <div class="card-header bg-white border-bottom p-3 no-print">
+            <h5 class="font-weight-bold m-0 text-dark">
+                {{ strtoupper($logbook->jenis_logbook) }}
+            </h5>
+            <small class="text-muted">
+                {{ strtoupper($logbook->lokasi_tempat) }} &mdash;
+                BULAN {{ strtoupper($bulanCarbon->isoFormat('MMMM YYYY')) }}
+            </small>
         </div>
 
-        @if(empty($definisiKolom))
-            {{-- Jenis logbook tidak dikenali --}}
-            <div class="card-body text-center py-5 text-muted">
+        @if($alats->isEmpty())
+            <div class="card-body text-center py-5 text-muted no-print">
                 <i class="fas fa-exclamation-triangle mb-3 d-block text-warning" style="font-size:2.5rem;"></i>
-                <p>Definisi kolom untuk jenis logbook <strong>"{{ $logbook->jenis_logbook }}"</strong> belum dikonfigurasi.</p>
-                <small>Tambahkan di <code>Logbook::getDefinisiKolom()</code></small>
+                <p class="mb-1">Belum ada alat yang terdaftar di sub kategori ini.</p>
+                <small>
+                    Tambahkan alat dengan sub kategori
+                    <strong>{{ $logbook->subKategori->nama_sub_kategori ?? '-' }}</strong>
+                    melalui menu <a href="{{ route('data-alat.index') }}">Data Alat</a>.
+                </small>
             </div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered table-hover text-center mb-0"
-                       style="font-size: 0.8rem; min-width: 900px;">
+                <table class="table table-bordered table-hover text-center mb-0 logbook-table"
+                       style="font-size:0.8rem; min-width:900px;">
 
                     {{-- HEADER --}}
                     <thead class="bg-light text-dark font-weight-bold text-uppercase" style="font-size:0.75rem;">
                         <tr>
                             <th class="align-middle" style="width:40px;">TGL</th>
-                            @foreach($definisiKolom as $key => $label)
-                                <th class="align-middle px-2">{{ strtoupper($label) }}</th>
+                            @foreach($alats as $alat)
+                                <th class="align-middle px-2">
+                                    {{ strtoupper($alat->nama_alat) }}
+                                    <div class="text-muted font-weight-normal" style="font-size:0.65rem;">
+                                        S/N: {{ $alat->nomor_seri }}
+                                    </div>
+                                </th>
                             @endforeach
                             <th class="align-middle text-left px-3" style="min-width:180px;">KETERANGAN</th>
-                            <th class="align-middle" style="min-width:100px;">TEKNISI</th>
+                            <th class="align-middle" style="min-width:120px;">TEKNISI</th>
                         </tr>
                     </thead>
 
-                    {{-- BODY: 1 baris per hari --}}
+                    {{-- BODY --}}
                     <tbody>
                         @for($hari = 1; $hari <= $jumlahHari; $hari++)
                             @php
                                 $dataHari = $dataHarian[$hari] ?? [];
                                 $adaData  = !empty($dataHari);
                             @endphp
-                            <tr class="{{ !$adaData ? 'table-light text-muted' : '' }}">
+                            <tr class="{{ !$adaData ? 'table-light' : '' }}">
+                                <td class="font-weight-bold align-middle text-dark">{{ $hari }}</td>
 
-                                {{-- Kolom Tanggal --}}
-                                <td class="font-weight-bold align-middle">{{ $hari }}</td>
-
-                                {{-- Kolom per Alat --}}
-                                @foreach($definisiKolom as $namaAlat => $label)
+                                @foreach($alats as $alat)
                                     @php
-                                        $kondisi = $dataHari[$namaAlat] ?? null;
+                                        $kondisi = $dataHari[$alat->id] ?? null;
                                     @endphp
                                     <td class="align-middle">
                                         @if($kondisi)
                                             @php
-                                                $badge = Logbook::getBadgeKondisi($kondisi);
-                                                $labelKondisi = Logbook::getLabelKondisi($kondisi);
+                                                $badge        = App\Models\Logbook::getBadgeKondisi($kondisi);
+                                                $labelKondisi = App\Models\Logbook::getLabelKondisi($kondisi);
                                             @endphp
                                             <span class="badge badge-{{ $badge }} px-2 py-1">
                                                 {{ $labelKondisi }}
@@ -176,12 +379,10 @@
                                     </td>
                                 @endforeach
 
-                                {{-- Kolom Keterangan --}}
                                 <td class="text-left px-3 align-middle" style="font-size:0.78rem;">
                                     {{ $keteranganHarian[$hari] ?? '' }}
                                 </td>
 
-                                {{-- Kolom Teknisi --}}
                                 <td class="align-middle">
                                     @if(!empty($teknisiHarian[$hari]))
                                         <span class="badge badge-light border text-dark px-2">
@@ -189,7 +390,6 @@
                                         </span>
                                     @endif
                                 </td>
-
                             </tr>
                         @endfor
                     </tbody>
@@ -197,28 +397,400 @@
             </div>
 
             {{-- LEGENDA --}}
-            <div class="card-footer bg-white border-top p-3">
-                <small class="text-muted font-weight-bold mr-3">KETERANGAN STATUS:</small>
+            <div class="card-footer bg-white border-top p-3 d-flex align-items-center flex-wrap no-print">
+                <small class="text-muted font-weight-bold mr-3 text-uppercase">Keterangan Status:</small>
                 <span class="badge badge-success px-2 py-1 mr-2">BAIK</span>
-                <span class="badge badge-danger px-2 py-1 mr-2">RUSAK</span>
                 <span class="badge badge-warning px-2 py-1 mr-2">RUSAK RINGAN</span>
+                <span class="badge badge-danger px-2 py-1 mr-2">RUSAK BERAT</span>
                 <span class="badge badge-secondary px-2 py-1 mr-2">OFF</span>
-                <span class="text-muted mr-2" style="font-size:0.8rem;">#N/A = Tidak ada data</span>
+                <span class="text-muted ml-2" style="font-size:0.8rem;">
+                    <i class="fas fa-info-circle mr-1"></i>#N/A = Belum ada data pengecekan
+                </span>
             </div>
         @endif
     </div>
 
+    {{-- ══════════════════════════════════════════════════════ --}}
+    {{-- SECTION PARAF / TANDA TANGAN                          --}}
+    {{-- Ditampilkan di layar (info) dan di print (dengan TTD) --}}
+    {{-- ══════════════════════════════════════════════════════ --}}
+    <div class="card shadow-sm border-0 rounded-lg mb-4" id="sectionParaf">
+        <div class="card-header bg-white border-bottom p-3 no-print">
+            <h6 class="font-weight-bold m-0 text-dark">
+                <i class="fas fa-signature mr-2 text-muted"></i>
+                Tanda Tangan & Persetujuan
+            </h6>
+        </div>
+        <div class="card-body p-4">
+            <div class="row text-center">
+
+                {{-- Kolom Dibuat Oleh / Admin --}}
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <p class="font-weight-bold text-uppercase small text-muted mb-1">Dibuat Oleh</p>
+                        <p class="small text-muted mb-1">Admin</p>
+
+                        {{-- Spacer TTD --}}
+                        <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                            <span class="text-muted small">&nbsp;</span>
+                        </div>
+
+                        <div class="border-top pt-2">
+                            <p class="font-weight-bold mb-0 small text-dark">{{ Auth::user()->name }}</p>
+                            <p class="text-muted mb-0" style="font-size:0.75rem;">NIP. {{ Auth::user()->nip ?? '-' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Kolom Kepala Unit / Kanit --}}
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100
+                        @if($logbook->status === 'rejected_kanit') border-danger
+                        @elseif(in_array($logbook->status, ['approved_kanit','pending_koordinator','approved_final'])) border-success
+                        @endif">
+                        <p class="font-weight-bold text-uppercase small text-muted mb-1">Kepala Unit</p>
+
+                        @if(in_array($logbook->status, ['approved_kanit', 'pending_koordinator', 'approved_final']))
+                            <p class="small text-muted mb-1">
+                                {{ $logbook->approved_kanit_at ? $logbook->approved_kanit_at->isoFormat('D MMM YYYY') : '-' }}
+                            </p>
+                            {{-- Paraf Kanit --}}
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <img src="{{ public_path('assets/dist/img/TTD/parafKanit.png') }}"
+                                     onerror="this.style.display='none'"
+                                     height="60" alt="Paraf Kanit"
+                                     class="paraf-img">
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="font-weight-bold mb-0 small text-dark text-success">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    {{ $logbook->approvedKanitOleh->name ?? '-' }}
+                                </p>
+                                <p class="text-muted mb-0" style="font-size:0.75rem;">
+                                    NIP. {{ $logbook->approvedKanitOleh->nip ?? '-' }}
+                                </p>
+                            </div>
+                        @elseif($logbook->status === 'rejected_kanit')
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <span class="badge badge-danger px-3 py-2">
+                                    <i class="fas fa-times-circle mr-1"></i>Ditolak
+                                </span>
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="text-danger mb-0 small font-weight-bold">
+                                    {{ $logbook->approvedKanitOleh->name ?? '-' }}
+                                </p>
+                                @if($logbook->catatan_kanit)
+                                    <p class="text-muted mb-0" style="font-size:0.7rem;">
+                                        "{{ $logbook->catatan_kanit }}"
+                                    </p>
+                                @endif
+                            </div>
+                        @else
+                            {{-- Belum diproses --}}
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <span class="text-muted small">
+                                    @if($logbook->status === 'pending_kanit')
+                                        <span class="badge badge-warning">Menunggu Persetujuan</span>
+                                    @else
+                                        <i class="fas fa-clock text-muted"></i> Belum diproses
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="text-muted mb-0 small">( _________________ )</p>
+                                <p class="text-muted mb-0" style="font-size:0.75rem;">NIP.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Kolom Koordinator --}}
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100
+                        @if($logbook->status === 'rejected_koordinator') border-danger
+                        @elseif($logbook->status === 'approved_final') border-success
+                        @endif">
+                        <p class="font-weight-bold text-uppercase small text-muted mb-1">Koordinator</p>
+
+                        @if($logbook->status === 'approved_final')
+                            <p class="small text-muted mb-1">
+                                {{ $logbook->approved_koordinator_at ? $logbook->approved_koordinator_at->isoFormat('D MMM YYYY') : '-' }}
+                            </p>
+                            {{-- Paraf Koordinator --}}
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <img src="{{ public_path('assets/dist/img/TTD/parafKoordinator.png') }}"
+                                     onerror="this.style.display='none'"
+                                     height="60" alt="Paraf Koordinator"
+                                     class="paraf-img">
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="font-weight-bold mb-0 small text-dark text-success">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    {{ $logbook->approvedKoordinatorOleh->name ?? '-' }}
+                                </p>
+                                <p class="text-muted mb-0" style="font-size:0.75rem;">
+                                    NIP. {{ $logbook->approvedKoordinatorOleh->nip ?? '-' }}
+                                </p>
+                            </div>
+                        @elseif($logbook->status === 'rejected_koordinator')
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <span class="badge badge-danger px-3 py-2">
+                                    <i class="fas fa-times-circle mr-1"></i>Ditolak
+                                </span>
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="text-danger mb-0 small font-weight-bold">
+                                    {{ $logbook->approvedKoordinatorOleh->name ?? '-' }}
+                                </p>
+                                @if($logbook->catatan_koordinator)
+                                    <p class="text-muted mb-0" style="font-size:0.7rem;">
+                                        "{{ $logbook->catatan_koordinator }}"
+                                    </p>
+                                @endif
+                            </div>
+                        @else
+                            <div style="height:70px;" class="d-flex align-items-center justify-content-center">
+                                <span class="text-muted small">
+                                    @if($logbook->status === 'pending_koordinator')
+                                        <span class="badge badge-warning">Menunggu Persetujuan</span>
+                                    @else
+                                        <i class="fas fa-clock text-muted"></i> Belum diproses
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="border-top pt-2">
+                                <p class="text-muted mb-0 small">( _________________ )</p>
+                                <p class="text-muted mb-0" style="font-size:0.75rem;">NIP.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+            </div>{{-- /row --}}
+        </div>
+    </div>
+
+</div>{{-- /container-fluid --}}
+
+
+{{-- ══════════════════════════════════════════════════════════ --}}
+{{-- MODAL APPROVE KANIT                                        --}}
+{{-- ══════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modalApproveKanit" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title font-weight-bold">
+                    <i class="fas fa-check-circle mr-2"></i> Setujui Logbook
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="modalApproveKanitForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Logbook akan diteruskan ke Koordinator setelah disetujui.</p>
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase">Catatan (opsional)</label>
+                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                                  placeholder="Catatan persetujuan..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success font-weight-bold px-4">
+                        <i class="fas fa-check mr-1"></i> Ya, Setujui
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+{{-- ══════════════════════════════════════════════════════════ --}}
+{{-- MODAL REJECT KANIT                                         --}}
+{{-- ══════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modalRejectKanit" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title font-weight-bold">
+                    <i class="fas fa-times-circle mr-2"></i> Tolak Logbook
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="modalRejectKanitForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Admin akan diminta merevisi dan mengajukan ulang.</p>
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase">
+                            Alasan Penolakan <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                                  placeholder="Tuliskan alasan penolakan..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger font-weight-bold px-4">
+                        <i class="fas fa-times mr-1"></i> Ya, Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════════ --}}
+{{-- MODAL APPROVE KOORDINATOR                                  --}}
+{{-- ══════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modalApproveKoordinator" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title font-weight-bold">
+                    <i class="fas fa-check-double mr-2"></i> Setujui Final
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="modalApproveKoordinatorForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Logbook akan berstatus <strong>Disetujui Final</strong> dan PDF dapat diunduh.
+                    </p>
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase">Catatan (opsional)</label>
+                        <textarea name="catatan_koordinator" class="form-control shadow-none" rows="3"
+                                  placeholder="Catatan persetujuan..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success font-weight-bold px-4">
+                        <i class="fas fa-check-double mr-1"></i> Ya, Setujui Final
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════════ --}}
+{{-- MODAL REJECT KOORDINATOR                                   --}}
+{{-- ══════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modalRejectKoordinator" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title font-weight-bold">
+                    <i class="fas fa-times-circle mr-2"></i> Tolak (Koordinator)
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="modalRejectKoordinatorForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Logbook akan dikembalikan untuk direvisi.</p>
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase">
+                            Alasan Penolakan <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="catatan_koordinator" class="form-control shadow-none" rows="3"
+                                  placeholder="Tuliskan alasan penolakan..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger font-weight-bold px-4">
+                        <i class="fas fa-times mr-1"></i> Ya, Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
 <style>
+    /* ── Elemen yang disembunyikan saat print ── */
+    .no-print { display: block; }
+    .print-only { display: none; }
+
     @media print {
-        .btn, .breadcrumb, .info-box, form, .card-footer { display: none !important; }
-        .card { border: none !important; box-shadow: none !important; }
-        .card-header { border-bottom: 2px solid #000 !important; }
-        table { font-size: 9pt !important; }
-        th, td { padding: 4px 6px !important; }
+        /* Sembunyikan elemen UI */
+        .no-print,
+        .sidebar,
+        .main-header,
+        .main-footer,
+        .btn,
+        nav,
+        form,
+        .card-footer,
+        .info-box,
+        .breadcrumb,
+        .modal { display: none !important; }
+
+        /* Tampilkan elemen khusus print */
+        .print-only { display: block !important; }
+
+        /* Reset card styling */
+        .card {
+            border: 1px solid #dee2e6 !important;
+            box-shadow: none !important;
+            margin-bottom: 12px !important;
+        }
+        .card-header {
+            border-bottom: 2px solid #000 !important;
+            padding: 6px 12px !important;
+            background-color: #f8f9fa !important;
+        }
+
+        /* Tabel kompak */
+        .logbook-table {
+            font-size: 8pt !important;
+        }
+        .logbook-table th,
+        .logbook-table td {
+            padding: 3px 5px !important;
+        }
+
+        /* Section paraf selalu tampil di print */
+        #sectionParaf {
+            display: block !important;
+            page-break-inside: avoid;
+        }
+
+        /* Pastikan paraf img tampil */
+        .paraf-img {
+            display: block !important;
+            max-height: 60px;
+        }
+
+        /* Warna badge tetap kelihatan di print */
+        .badge-success { background-color: #28a745 !important; color: #fff !important; }
+        .badge-warning { background-color: #ffc107 !important; color: #212529 !important; }
+        .badge-danger  { background-color: #dc3545 !important; color: #fff !important; }
+        .badge-secondary { background-color: #6c757d !important; color: #fff !important; }
+        .badge-info    { background-color: #17a2b8 !important; color: #fff !important; }
+
+        body { font-size: 9pt; }
+        .container-fluid { padding: 0 !important; }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    /**
+     * Tetapkan action form modal sesuai ID logbook yang di-klik.
+     * Fungsi ini sama dengan yang dipakai di index.blade.php.
+     */
+    function setModalId(formId, action) {
+        document.getElementById(formId).setAttribute('action', action);
+    }
+</script>
 @endpush

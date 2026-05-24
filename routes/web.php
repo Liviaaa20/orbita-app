@@ -115,21 +115,24 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/histori-operasional/download/{id}', [HistoriOperasionalController::class, 'downloadSingle'])->name('histori.download-single');
     Route::get('/histori/{id}/riwayat', [HistoriOperasionalController::class, 'downloadRiwayat'])->name('histori.riwayat');
 
-Route::prefix('logbook')->name('logbook.')->group(function () {
- 
-    // Daftar semua logbook (metadata)
-    Route::get('/',         [LogbookController::class, 'index'])->name('index');
- 
-    // Detail isi logbook (tabel harian dari pengecekan)
-    Route::get('/{id}',     [LogbookController::class, 'show'])->name('show');
- 
-    // Tambah logbook baru
-    Route::post('/store',   [LogbookController::class, 'store'])->name('store');
- 
-    // Update metadata logbook
-    Route::put('/update/{id}',  [LogbookController::class, 'update'])->name('update');
- 
-    // Hapus logbook
-    Route::delete('/delete/{id}', [LogbookController::class, 'destroy'])->name('destroy');
-});
+    Route::prefix('logbook')->name('logbook.')->group(function () {
+
+        // Index & Show
+        Route::get('/',          [LogbookController::class, 'index'])->name('index');
+        Route::get('/{id}',      [LogbookController::class, 'show'])->name('show');
+
+        // CRUD
+        Route::post('/store',        [LogbookController::class, 'store'])->name('store');
+        Route::put('/update/{id}',   [LogbookController::class, 'update'])->name('update');
+        Route::delete('/delete/{id}',[LogbookController::class, 'destroy'])->name('destroy');
+
+        // Alur Approval
+        Route::post('/submit/{id}',              [LogbookController::class, 'submit'])->name('submit');
+        Route::post('/approve-kanit/{id}',       [LogbookController::class, 'approveKanit'])->name('approve-kanit');
+        Route::post('/reject-kanit/{id}',        [LogbookController::class, 'rejectKanit'])->name('reject-kanit');
+        Route::post('/approve-koordinator/{id}', [LogbookController::class, 'approveKoordinator'])->name('approve-koordinator');
+        Route::post('/reject-koordinator/{id}',  [LogbookController::class, 'rejectKoordinator'])->name('reject-koordinator');
+    });
+         // Download PDF (hanya approved_final)
+        Route::get('/download-pdf/{id}', [LogbookController::class, 'downloadPdf'])->name('download-pdf');
 });

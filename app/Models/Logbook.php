@@ -10,90 +10,107 @@ class Logbook extends Model
     use HasFactory;
 
     protected $fillable = [
+        'sub_kategori_id',
         'jenis_logbook',
         'jenis_alat',
         'lokasi_tempat',
         'periode_tersedia',
         'jumlah_data',
         'terakhir_diperbarui',
+        'status',
+        'approved_kanit_by',
+        'approved_kanit_at',
+        'catatan_kanit',
+        'approved_koordinator_by',
+        'approved_koordinator_at',
+        'catatan_koordinator',
     ];
 
     protected $casts = [
-        'terakhir_diperbarui' => 'date',
+        'terakhir_diperbarui'    => 'date',
+        'approved_kanit_at'      => 'datetime',
+        'approved_koordinator_at'=> 'datetime',
     ];
 
     // ============================================================
-    // DEFINISI KOLOM PER JENIS LOGBOOK
-    // Key   = nama kolom internal (sesuai nama_alat di tabel alats)
-    // Value = label yang tampil di header tabel
+    // RELASI
     // ============================================================
-    public static function getDefinisiKolom(string $jenisLogbook): array
+    public function subKategori()
     {
-        $map = [
-            // ── LOG BOOK PERALATAN KONVENSIONAL ──────────────────────────
-            'LOG BOOK PERALATAN KONVENSIONAL' => [
-                'TERMOMETER (BK)'        => 'Termometer (BK)',
-                'TERMOMETER (MAX)'       => 'Termometer (Max)',
-                'TERMOMETER (MIN)'       => 'Termometer (Min)',
-                'RAIN GAUGE (OBS)'       => 'Rain Gauge (Obs)',
-                'RAIN GAUGE (HELLMAN)'   => 'Rain Gauge (Hellman)',
-                'CAMPBELL STOKES'        => 'Campbell Stokes',
-                'EVAPORIMETER'           => 'Evaporimeter',
-                'TERMOHYGROGRAPH'        => 'Termohygrograph',
-                'BAROGRAPH'              => 'Barograph',
-                'CMSS (LINTAS ARTA)'     => 'CMSS (Lintas Arta)',
-            ],
+        return $this->belongsTo(SubKategori::class, 'sub_kategori_id');
+    }
 
-            // ── LOG BOOK AWS DIGITALISASI ────────────────────────────────
-            'LOG BOOK AWS DIGITALISASI' => [
-                'ANEMOMETER'             => 'Anemometer',
-                'TERMOMETER (UDARA)'     => 'Termometer (Udara)',
-                'HYGROMETER'             => 'Hygrometer',
-                'BAROMETER'              => 'Barometer',
-                'RAIN GAUGE'             => 'Rain Gauge',
-                'PYRANOMETER'            => 'Pyranometer',
-                'TERMOMETER (AIR)'       => 'Termometer (Air)',
-                'EVAPORIMETER'           => 'Evaporimeter',
-                'PC SERVER'              => 'PC Server',
-            ],
+    public function approvedKanitOleh()
+    {
+        return $this->belongsTo(User::class, 'approved_kanit_by');
+    }
 
-            // ── LOG BOOK AWS MARITIM ─────────────────────────────────────
-            'LOG BOOK AWS MARITIM' => [
-                'ANEMOMETER'             => 'Anemometer',
-                'TERMOMETER (UDARA)'     => 'Termometer (Udara)',
-                'HYGROMETER'             => 'Hygrometer',
-                'BAROMETER'              => 'Barometer',
-                'RAIN GAUGE'             => 'Rain Gauge',
-                'PYRANOMETER'            => 'Pyranometer',
-                'TERMOMETER (AIR)'       => 'Termometer (Air)',
-                'WATER LEVEL'            => 'Water Level',
-                'CCTV'                   => 'CCTV',
-            ],
-
-            // ── LOG BOOK DISPLAY ─────────────────────────────────────────
-            'LOG BOOK DISPLAY' => [
-                'DISPLAY'                => 'Display',
-            ],
-
-            // ── LOG BOOK MAWS/VAWS ───────────────────────────────────────
-            'LOG BOOK MAWS/VAWS' => [
-                'MAWS'                   => 'MAWS/VAWS',
-            ],
-        ];
-
-        // Cari berdasarkan partial match (case-insensitive)
-        foreach ($map as $key => $kolom) {
-            if (stripos($jenisLogbook, $key) !== false || stripos($key, $jenisLogbook) !== false) {
-                return $kolom;
-            }
-        }
-
-        // Fallback: kembalikan kolom kosong jika tidak ditemukan
-        return [];
+    public function approvedKoordinatorOleh()
+    {
+        return $this->belongsTo(User::class, 'approved_koordinator_by');
     }
 
     // ============================================================
-    // HELPER: Badge warna untuk status kondisi alat
+    // HELPER: Ambil semua alat dari sub kategori logbook ini
+    // ============================================================
+    public function getAlats()
+    {
+        if (!$this->sub_kategori_id) return collect();
+        return Alat::where('sub_kategori_id', $this->sub_kategori_id)->get();
+    }
+
+    // ============================================================
+    // HELPER STATUS — label teks
+    // ============================================================
+    public function getLabelStatus(): string
+    {
+        return match($this->status) {
+            'draft'                  => 'Draft',
+            'pending_kanit'          => 'Menunggu Kanit',
+            'approved_kanit'         => 'Disetujui Kanit',
+            'rejected_kanit'         => 'Ditolak Kanit',
+            'pending_koordinator'    => 'Menunggu Koordinator',
+            'approved_final'         => 'Disetujui Final',
+            'rejected_koordinator'   => 'Ditolak Koordinator',
+            default                  => strtoupper($this->status),
+        };
+    }
+
+    // ============================================================
+    // HELPER STATUS — warna badge Bootstrap
+    // ============================================================
+    public function getBadgeStatus(): string
+    {
+        return match($this->status) {
+            'draft'                  => 'secondary',
+            'pending_kanit'          => 'warning',
+            'approved_kanit'         => 'info',
+            'rejected_kanit'         => 'danger',
+            'pending_koordinator'    => 'warning',
+            'approved_final'         => 'success',
+            'rejected_koordinator'   => 'danger',
+            default                  => 'light',
+        };
+    }
+
+    // ============================================================
+    // HELPER STATUS — cek apakah bisa didownload PDF
+    // ============================================================
+    public function bisaDownload(): bool
+    {
+        return $this->status === 'approved_final';
+    }
+
+    // ============================================================
+    // HELPER STATUS — cek apakah bisa disubmit ke kanit
+    // ============================================================
+    public function bisaSubmit(): bool
+    {
+        return in_array($this->status, ['draft', 'rejected_kanit', 'rejected_koordinator']);
+    }
+
+    // ============================================================
+    // HELPER: Badge warna untuk kondisi alat
     // ============================================================
     public static function getBadgeKondisi(string $kondisi): string
     {
@@ -108,14 +125,14 @@ class Logbook extends Model
     }
 
     // ============================================================
-    // HELPER: Label singkat untuk kondisi
+    // HELPER: Label singkat kondisi alat
     // ============================================================
     public static function getLabelKondisi(string $kondisi): string
     {
         return match(strtolower($kondisi)) {
             'baik'         => 'BAIK',
-            'rusak ringan' => 'RUSAK',
-            'rusak berat'  => 'RUSAK',
+            'rusak ringan' => 'RUSAK RINGAN',
+            'rusak berat'  => 'RUSAK BERAT',
             'on'           => 'ON',
             'off'          => 'OFF',
             default        => strtoupper($kondisi),

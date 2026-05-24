@@ -1,4 +1,3 @@
-
 @extends('layouts.master')
 <style>
     /* CSS BAWAAN KAMU (DIPERTAHANKAN & DIPERBAIKI) */
@@ -97,7 +96,7 @@
                                     <th style="width: 10%">Validasi</th>
                                     <th class="col-wrap">Catatan</th>
                                     <th class="col-status-fixed">Status</th>
-                                    <th>Aksi</th>
+                                    <th style="width: 10%">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -153,7 +152,10 @@
                                         @endif
                                     </td>
 
-                                    <td class="col-wrap small text-muted">{{ $p->catatan ?? '-' }}</td>
+                                    {{-- KOLOM CATATAN --}}
+                                    <td class="col-wrap small text-muted">
+                                        {{ $p->catatan ?? '-' }}
+                                    </td>
                                     
                                     {{-- LOGIKA STATUS (On Proses / Selesai) --}}
                                     <td class="text-center col-status-fixed">
@@ -166,6 +168,7 @@
                                                     <option value="onproses" {{ $p->status == 'onproses' ? 'selected' : '' }}>● On Proses</option>
                                                     <option value="selesai" {{ $p->status == 'selesai' ? 'selected' : '' }}>● Selesai</option>
                                                 </select>
+                                                {{-- Input hidden menjaga catatan saat status diubah via select ini --}}
                                                 <input type="hidden" name="catatan" value="{{ $p->catatan }}">
                                             </form>
                                         @else
@@ -175,10 +178,60 @@
                                         @endif
                                     </td>
                                     
+                                    {{-- KOLOM AKSI --}}
                                     <td class="text-center">
-                                        <a href="{{ route('perbaikan.download', $p->id) }}" class="btn btn-sm btn-light border shadow-sm" title="Download">
-                                            <i class="fas fa-download text-primary"></i>
-                                        </a>
+                                        <div class="btn-group" role="group">
+                                            {{-- Tombol Download --}}
+                                            <a href="{{ route('perbaikan.download', $p->id) }}" class="btn btn-sm btn-light border shadow-sm" title="Download">
+                                                <i class="fas fa-download text-primary"></i>
+                                            </a>
+                                            
+                                            {{-- Tombol Edit Catatan (Hanya Muncul untuk Admin) --}}
+                                            @if(Auth::user()->role && Auth::user()->role->nama_role == 'admin')
+                                                <button type="button" class="btn btn-sm btn-light border shadow-sm" 
+                                                        data-toggle="modal" data-target="#modalCatatan{{ $p->id }}" title="Edit Catatan">
+                                                    <i class="fas fa-edit text-warning"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+
+                                        {{-- MODAL INTERAKTIF KHUSUS EDIT CATATAN --}}
+                                        @if(Auth::user()->role && Auth::user()->role->nama_role == 'admin')
+                                            <div class="modal fade" id="modalCatatan{{ $p->id }}" tabindex="-1" role="dialog" aria-labelledby="modalCatatanLabel{{ $p->id }}" aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                                    <div class="modal-content text-left">
+                                                        <div class="modal-header bg-light">
+                                                            <h5 class="modal-title font-weight-bold" id="modalCatatanLabel{{ $p->id }}">
+                                                                <i class="fas fa-comment-alt text-warning mr-2"></i> Edit Catatan Tiket #{{ $p->no_tiket }}
+                                                            </h5>
+                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <form action="{{ route('perbaikan.update', $p->id) }}" method="POST">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div class="modal-body">
+                                                                {{-- Mengunci status saat ini agar tidak ikut berubah --}}
+                                                                <input type="hidden" name="status" value="{{ $p->status }}">
+                                                                
+                                                                <div class="form-group">
+                                                                    <label class="font-weight-bold text-dark">Catatan Perbaikan :</label>
+                                                                    <textarea name="catatan" class="form-control" rows="5" placeholder="Masukkan catatan atau progress perbaikan di sini...">{{ $p->catatan }}</textarea>
+                                                                    <small class="form-text text-muted">Catatan ini langsung disimpan tanpa mengubah status perbaikan saat ini.</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer bg-whitesmoke">
+                                                                <button type="button" class="btn btn-light border" data-dismiss="modal">Batal</button>
+                                                                <button type="submit" class="btn btn-primary shadow-sm">
+                                                                    <i class="fas fa-save mr-1"></i> Simpan Catatan
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach
@@ -198,12 +251,11 @@
         if (!$.fn.DataTable.isDataTable('#tablePerbaikan')) {
             var table = $('#tablePerbaikan').DataTable({
                 "responsive": false, 
-                "scrollX": true, // Aktifkan lagi agar tabel tidak pecah, tapi kita sinkronkan
+                "scrollX": true, 
                 "scrollCollapse": true,
                 "lengthChange": false, 
                 "autoWidth": false,
                 "ordering": false,
-                // DOM ini mengatur posisi: B (Buttons), f (filter/search), t (table), i (info), p (pagination)
                 "dom": "<'row'<'col-md-6'B><'col-md-6'f>>" +
                        "<'row'<'col-12'tr>>" +
                        "<'row'<'col-md-5 mt-3'i><'col-md-7 mt-3'p>>",
@@ -215,13 +267,13 @@
                 }
             });
 
-            // Menyejajarkan Search ke kanan secara paksa
+            // Sinkronisasi posisi search
             $('#tablePerbaikan_filter').addClass('text-right');
             
-            // Mengatur margin tombol agar tidak menempel ke atas
+            // Jarak tombol ekspor dataTables
             table.buttons().container().css('margin-bottom', '10px');
 
-            // Sinkronisasi header dan body
+            // Perbaikan auto-width scrollX DataTables
             setTimeout(function() {
                 table.columns.adjust().draw();
             }, 300);

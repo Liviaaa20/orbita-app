@@ -128,162 +128,291 @@
     <nav class="mt-3">
     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
     
-    @php
-      $userRole = strtolower(Auth::user()->role->nama_role ?? '');
-      $isAdmin = ($userRole == 'admin');
-      $isTeknisi = ($userRole == 'teknisi');
-      $isKepalaUnit = in_array($userRole, ['kepala unit', 'kepala_unit']);
-      
-      // Role operasional yang diizinkan menginput perbaikan
-      $isStaffOps = in_array($userRole, ['tu', 'tata usaha', 'observer', 'forecaster', 'forcaster']);
-    @endphp
+@php
+  $userRole = strtolower(Auth::user()->role->nama_role ?? '');
 
-    {{-- 1. DASHBOARD (Semua Role) --}}
-    <li class="nav-item">
-      <a href="{{ route('dashboard') }}" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">
-        <i class="nav-icon fas fa-home"></i> <p>Dashboard</p>
-      </a>
-    </li>
+  $isAdmin = ($userRole == 'admin');
 
-    {{-- 2. MASTER USER (Hanya Admin) --}}
-    @if($isAdmin)
-    <li class="nav-item {{ request()->is('role*') || request()->is('user*') ? 'menu-open' : '' }}">
-        <a href="#" class="nav-link {{ request()->is('role*') || request()->is('user*') ? 'active' : '' }}">
-          <i class="nav-icon fas fa-users"></i>
-          <p>Master User <i class="right fas fa-angle-left"></i></p>
-        </a>
-        <ul class="nav nav-treeview">
-          <li class="nav-item">
-            <a href="{{ route('user.index') }}" class="nav-link px-4 {{ request()->is('user*') ? 'active' : '' }}">
-              <i class="far fa-circle nav-icon"></i> <p>User</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="{{ route('role.index') }}" class="nav-link px-4 {{ request()->is('role*') ? 'active' : '' }}">
-              <i class="far fa-circle nav-icon"></i> <p>Role</p>
-            </a>
-          </li>
-        </ul>
-    </li>
-    @endif
+  $isTeknisi = ($userRole == 'teknisi');
 
-    {{-- 3. MASTER DATA (Admin & Teknisi) --}}
-    @if($isAdmin || $isTeknisi)
-    <li class="nav-item {{ request()->is('kategori*') || request()->is('sub-kategori*')|| request()->is('data-alat*') || request()->is('pengecekan*') ? 'menu-open' : '' }}">
-        <a href="#" class="nav-link {{ request()->is('kategori*') || request()->is('sub-kategori*')|| request()->is('data-alat*') || request()->is('pengecekan*') ? 'active' : '' }}">
-            <i class="nav-icon fas fa-database"></i>
-            <p>Master Data <i class="right fas fa-angle-left"></i></p>
-        </a>
-        <ul class="nav nav-treeview">
-            <li class="nav-item">
-                <a href="{{ route('kategori.index') }}" class="nav-link px-4 {{ request()->is('kategori*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i> <p>Kategori</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('sub-kategori.index') }}" class="nav-link px-4 {{ request()->is('sub-kategori*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i> <p>Sub Kategori</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('data-alat.index') }}" class="nav-link px-4 {{ request()->is('data-alat*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i> <p>Data Alat</p>
-                </a>
-            </li>
-            <li class="nav-item">
-            <a href="{{ route('pengecekan.index', ['type' => 'harian']) }}" class="nav-link px-4 {{ request()->is('pengecekan*') ? 'active' : '' }}">
-    <i class="fas fa-clipboard-check nav-icon text-info"></i> <p>Pengecekan</p>
-</a>
-            </li>
-        </ul>
-    </li>
+  // Kanit / Kepala Unit
+  $isKepalaUnit = in_array($userRole, [
+      'kepala unit',
+      'kepala_unit',
+      'kanit'
+  ]);
 
-    {{-- 4. MAINTENANCE (Admin & Teknisi) --}}
-    <li class="nav-item {{ request()->is('maintenance*') ? 'menu-open' : '' }}">
-        <a href="#" class="nav-link {{ request()->is('maintenance*') ? 'active' : '' }}">
-            <i class="nav-icon fas fa-tools"></i>
-            <p>Maintenance <i class="right fas fa-angle-left"></i></p>
-        </a>
-        <ul class="nav nav-treeview">
-            <li class="nav-item">
-                <a href="{{ route('maintenance.harian') }}" class="nav-link px-4 {{ request()->is('maintenance/harian*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i> <p>Harian</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('maintenance.mingguan') }}" class="nav-link px-4 {{ request()->is('maintenance/mingguan*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i> <p>Mingguan</p>
-                </a>
-            </li>
-        </ul>
-    </li>
-    @endif
+  // Koordinator
+  $isKoordinator = ($userRole == 'koordinator');
 
-    {{-- 5. JADWAL DINAS (Semua kecuali TU/Observer/Forecaster jika hanya ingin dibatasi) --}}
-    @if($isAdmin || $isTeknisi || $isKepalaUnit)
-    <li class="nav-item {{ request()->is('jadwal-dinas*') ? 'menu-open' : '' }}">
-        <a href="#" class="nav-link {{ request()->is('jadwal-dinas*') ? 'active' : '' }}">
-            <i class="nav-icon fas fa-calendar-alt"></i>
-            <p>
-                Jadwal Dinas
-                <i class="right fas fa-angle-left"></i>
-            </p>
-        </a>
-        <ul class="nav nav-treeview">
-            {{-- Semua Role bisa melihat Jadwal --}}
-            <li class="nav-item">
-                <a href="{{ route('jadwal_dinas.index') }}" class="nav-link px-4 {{ request()->is('jadwal-dinas') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon text-info"></i>
-                    <p>Lihat Jadwal</p>
-                </a>
-            </li>
+  // Role operasional yang diizinkan menginput perbaikan
+  $isStaffOps = in_array($userRole, [
+      'tu',
+      'tata usaha',
+      'observer',
+      'forecaster',
+      'forcaster'
+  ]);
+@endphp
 
-            {{-- Hanya Kepala Unit yang bisa melihat menu Input Jadwal --}}
-            @if($isKepalaUnit)
-            <li class="nav-item">
-                <a href="{{ route('jadwal_dinas.create') }}" class="nav-link px-4 {{ request()->is('jadwal-dinas/create') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon text-warning"></i>
-                    <p>Input Jadwal</p>
-                </a>
-            </li>
-            @endif
-        </ul>
-    </li>
-    @endif
+<nav class="mt-3">
+<ul class="nav nav-pills nav-sidebar flex-column"
+    data-widget="treeview"
+    role="menu"
+    data-accordion="false">
 
-    {{-- 6. PERMINTAAN PERBAIKAN (Semua Role Bisa Lihat Index-nya) --}}
-    <li class="nav-item">
-        <a href="{{ route('perbaikan.index') }}" class="nav-link {{ request()->is('perbaikan*') ? 'active' : '' }}">
-            <i class="nav-icon fas fa-tools text-warning"></i>
-            <p>Permintaan Perbaikan</p>
-        </a>
-    </li>
-
-    {{-- 7. KALIBRASI & HISTORI (Admin & Teknisi) --}}
-@if($isAdmin || $isTeknisi)
+{{-- ===================================================== --}}
+{{-- 1. DASHBOARD (SEMUA ROLE) --}}
+{{-- ===================================================== --}}
 <li class="nav-item">
-    {{-- Diubah agar mengarah ke 'kalibrasi.index' dan otomatis 'active' saat diakses --}}
-    <a href="{{ route('kalibrasi.index') }}" class="nav-link {{ request()->routeIs('kalibrasi.*') ? 'active' : '' }}">
-        <i class="nav-icon fas fa-wave-square"></i> 
-        <p>Kalibrasi</p>
-    </a>
+  <a href="{{ route('dashboard') }}"
+     class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">
+    <i class="nav-icon fas fa-home"></i>
+    <p>Dashboard</p>
+  </a>
 </li>
-<li class="nav-item">
-    <a href="{{ route('histori.index') }}" class="nav-link {{ request()->is('histori-operasional*') ? 'active' : '' }}">
-        <i class="nav-icon fas fa-history"></i> 
-        <p>Histori Operasional</p>
+
+{{-- ===================================================== --}}
+{{-- 2. MASTER USER (ADMIN) --}}
+{{-- ===================================================== --}}
+@if($isAdmin)
+<li class="nav-item {{ request()->is('role*') || request()->is('user*') ? 'menu-open' : '' }}">
+
+    <a href="#"
+       class="nav-link {{ request()->is('role*') || request()->is('user*') ? 'active' : '' }}">
+      <i class="nav-icon fas fa-users"></i>
+      <p>
+        Master User
+        <i class="right fas fa-angle-left"></i>
+      </p>
     </a>
+
+    <ul class="nav nav-treeview">
+
+      <li class="nav-item">
+        <a href="{{ route('user.index') }}"
+           class="nav-link px-4 {{ request()->is('user*') ? 'active' : '' }}">
+          <i class="far fa-circle nav-icon"></i>
+          <p>User</p>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{{ route('role.index') }}"
+           class="nav-link px-4 {{ request()->is('role*') ? 'active' : '' }}">
+          <i class="far fa-circle nav-icon"></i>
+          <p>Role</p>
+        </a>
+      </li>
+
+    </ul>
 </li>
 @endif
 
-    {{-- 8. LOGBOOK (Admin, Teknisi, Kepala Unit) --}}
-    @if($isAdmin || $isTeknisi || $isKepalaUnit)
+{{-- ===================================================== --}}
+{{-- 3. MASTER DATA (ADMIN & TEKNISI) --}}
+{{-- ===================================================== --}}
+@if($isAdmin || $isTeknisi)
+
+<li class="nav-item {{ request()->is('kategori*')
+    || request()->is('sub-kategori*')
+    || request()->is('data-alat*')
+    || request()->is('pengecekan*')
+    ? 'menu-open' : '' }}">
+
+    <a href="#"
+       class="nav-link {{ request()->is('kategori*')
+          || request()->is('sub-kategori*')
+          || request()->is('data-alat*')
+          || request()->is('pengecekan*')
+          ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-database"></i>
+
+        <p>
+          Master Data
+          <i class="right fas fa-angle-left"></i>
+        </p>
+    </a>
+
+    <ul class="nav nav-treeview">
+
+        <li class="nav-item">
+            <a href="{{ route('kategori.index') }}"
+               class="nav-link px-4 {{ request()->is('kategori*') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Kategori</p>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('sub-kategori.index') }}"
+               class="nav-link px-4 {{ request()->is('sub-kategori*') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Sub Kategori</p>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('data-alat.index') }}"
+               class="nav-link px-4 {{ request()->is('data-alat*') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Data Alat</p>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('pengecekan.index', ['type' => 'harian']) }}"
+               class="nav-link px-4 {{ request()->is('pengecekan*') ? 'active' : '' }}">
+                <i class="fas fa-clipboard-check nav-icon text-info"></i>
+                <p>Pengecekan</p>
+            </a>
+        </li>
+
+    </ul>
+</li>
+
+{{-- ===================================================== --}}
+{{-- 4. MAINTENANCE --}}
+{{-- ===================================================== --}}
+<li class="nav-item {{ request()->is('maintenance*') ? 'menu-open' : '' }}">
+
+    <a href="#"
+       class="nav-link {{ request()->is('maintenance*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-tools"></i>
+
+        <p>
+          Maintenance
+          <i class="right fas fa-angle-left"></i>
+        </p>
+    </a>
+
+    <ul class="nav nav-treeview">
+
+        <li class="nav-item">
+            <a href="{{ route('maintenance.harian') }}"
+               class="nav-link px-4 {{ request()->is('maintenance/harian*') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Harian</p>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('maintenance.mingguan') }}"
+               class="nav-link px-4 {{ request()->is('maintenance/mingguan*') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Mingguan</p>
+            </a>
+        </li>
+
+    </ul>
+</li>
+
+@endif
+
+{{-- ===================================================== --}}
+{{-- 5. JADWAL DINAS --}}
+{{-- ===================================================== --}}
+@if($isAdmin || $isTeknisi || $isKepalaUnit || $isKoordinator)
+
+<li class="nav-item {{ request()->is('jadwal-dinas*') ? 'menu-open' : '' }}">
+
+    <a href="#"
+       class="nav-link {{ request()->is('jadwal-dinas*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-calendar-alt"></i>
+
+        <p>
+            Jadwal Dinas
+            <i class="right fas fa-angle-left"></i>
+        </p>
+    </a>
+
+    <ul class="nav nav-treeview">
+
+        {{-- Semua role --}}
+        <li class="nav-item">
+            <a href="{{ route('jadwal_dinas.index') }}"
+               class="nav-link px-4 {{ request()->is('jadwal-dinas') ? 'active' : '' }}">
+
+                <i class="far fa-circle nav-icon text-info"></i>
+                <p>Lihat Jadwal</p>
+            </a>
+        </li>
+
+        {{-- Kanit & Koordinator --}}
+        @if($isKepalaUnit || $isKoordinator)
+        <li class="nav-item">
+            <a href="{{ route('jadwal_dinas.create') }}"
+               class="nav-link px-4 {{ request()->is('jadwal-dinas/create') ? 'active' : '' }}">
+
+                <i class="far fa-circle nav-icon text-warning"></i>
+                <p>Input Jadwal</p>
+            </a>
+        </li>
+        @endif
+
+    </ul>
+</li>
+
+@endif
+
+{{-- ===================================================== --}}
+{{-- 6. PERMINTAAN PERBAIKAN --}}
+{{-- ===================================================== --}}
 <li class="nav-item">
-    <a href="{{ route('logbook.index') }}" class="nav-link {{ request()->routeIs('logbook.*') ? 'active' : '' }}">
-        <i class="nav-icon fas fa-book shadow-none"></i> 
-        <p>Logbook</p>
+
+    <a href="{{ route('perbaikan.index') }}"
+       class="nav-link {{ request()->is('perbaikan*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-tools text-warning"></i>
+        <p>Permintaan Perbaikan</p>
+    </a>
+
+</li>
+
+{{-- ===================================================== --}}
+{{-- 7. KALIBRASI & HISTORI --}}
+{{-- ===================================================== --}}
+@if($isAdmin || $isTeknisi)
+
+<li class="nav-item">
+    <a href="{{ route('kalibrasi.index') }}"
+       class="nav-link {{ request()->routeIs('kalibrasi.*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-wave-square"></i>
+        <p>Kalibrasi</p>
     </a>
 </li>
+
+<li class="nav-item">
+    <a href="{{ route('histori.index') }}"
+       class="nav-link {{ request()->is('histori-operasional*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-history"></i>
+        <p>Histori Operasional</p>
+    </a>
+</li>
+
+@endif
+
+{{-- ===================================================== --}}
+{{-- 8. LOGBOOK --}}
+{{-- ===================================================== --}}
+@if($isAdmin || $isTeknisi || $isKepalaUnit || $isKoordinator)
+
+<li class="nav-item">
+
+    <a href="{{ route('logbook.index') }}"
+       class="nav-link {{ request()->routeIs('logbook.*') ? 'active' : '' }}">
+
+        <i class="nav-icon fas fa-book"></i>
+        <p>Logbook</p>
+    </a>
+
+</li>
+
 @endif
 
 </ul>
