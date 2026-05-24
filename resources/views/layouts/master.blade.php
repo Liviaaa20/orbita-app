@@ -221,10 +221,33 @@
 
     {{-- 5. JADWAL DINAS (Semua kecuali TU/Observer/Forecaster jika hanya ingin dibatasi) --}}
     @if($isAdmin || $isTeknisi || $isKepalaUnit)
-    <li class="nav-item">
-      <a href="#" class="nav-link">
-        <i class="nav-icon fas fa-calendar-alt"></i> <p>Jadwal Dinas</p>
-      </a>
+    <li class="nav-item {{ request()->is('jadwal-dinas*') ? 'menu-open' : '' }}">
+        <a href="#" class="nav-link {{ request()->is('jadwal-dinas*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-calendar-alt"></i>
+            <p>
+                Jadwal Dinas
+                <i class="right fas fa-angle-left"></i>
+            </p>
+        </a>
+        <ul class="nav nav-treeview">
+            {{-- Semua Role bisa melihat Jadwal --}}
+            <li class="nav-item">
+                <a href="{{ route('jadwal_dinas.index') }}" class="nav-link px-4 {{ request()->is('jadwal-dinas') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon text-info"></i>
+                    <p>Lihat Jadwal</p>
+                </a>
+            </li>
+
+            {{-- Hanya Kepala Unit yang bisa melihat menu Input Jadwal --}}
+            @if($isKepalaUnit)
+            <li class="nav-item">
+                <a href="{{ route('jadwal_dinas.create') }}" class="nav-link px-4 {{ request()->is('jadwal-dinas/create') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon text-warning"></i>
+                    <p>Input Jadwal</p>
+                </a>
+            </li>
+            @endif
+        </ul>
     </li>
     @endif
 
@@ -237,24 +260,29 @@
     </li>
 
     {{-- 7. KALIBRASI & HISTORI (Admin & Teknisi) --}}
-    @if($isAdmin || $isTeknisi)
-    <li class="nav-item">
-        <a href="#" class="nav-link"><i class="nav-icon fas fa-wave-square"></i> <p>Kalibrasi</p></a>
-    </li>
-    <li class="nav-item">
-        <a href="{{ route('histori.index') }}" class="nav-link {{ request()->is('histori-operasional*') ? 'active' : '' }}">
-            <i class="nav-icon fas fa-history"></i> <p>Histori Operasional</p>
-        </a>
-    </li>
-    @endif
+@if($isAdmin || $isTeknisi)
+<li class="nav-item">
+    {{-- Diubah agar mengarah ke 'kalibrasi.index' dan otomatis 'active' saat diakses --}}
+    <a href="{{ route('kalibrasi.index') }}" class="nav-link {{ request()->routeIs('kalibrasi.*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-wave-square"></i> 
+        <p>Kalibrasi</p>
+    </a>
+</li>
+<li class="nav-item">
+    <a href="{{ route('histori.index') }}" class="nav-link {{ request()->is('histori-operasional*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-history"></i> 
+        <p>Histori Operasional</p>
+    </a>
+</li>
+@endif
 
     {{-- 8. LOGBOOK (Admin, Teknisi, Kepala Unit) --}}
     @if($isAdmin || $isTeknisi || $isKepalaUnit)
 <li class="nav-item">
-  <a href="#" class="nav-link {{ request()->is('logbook*') ? 'active' : '' }}">
-    <i class="nav-icon fas fa-book"></i> 
-    <p>Logbook</p>
-  </a>
+    <a href="{{ route('logbook.index') }}" class="nav-link {{ request()->routeIs('logbook.*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-book shadow-none"></i> 
+        <p>Logbook</p>
+    </a>
 </li>
 @endif
 

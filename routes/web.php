@@ -14,6 +14,10 @@ use App\Http\Controllers\MasterData\PengecekanController;
 use App\Http\Controllers\HistoriOperasionalController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\PerbaikanController;
+use App\Http\Controllers\KalibrasiController;
+use App\Http\Controllers\CetakKalibrasiController;
+use App\Http\Controllers\JadwalDinasController;
+use App\Http\Controllers\LogbookController;
 
 // --- AUTHENTICATION ---
 Route::get('/', function () {
@@ -88,10 +92,21 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/download/{id}', [PerbaikanController::class, 'download'])->name('download');
     });
 
+    // --- KALIBRASI ALAT ---
+    Route::get('/kalibrasi', [KalibrasiController::class, 'index'])->name('kalibrasi.index');
+    Route::post('/kalibrasi/store', [KalibrasiController::class, 'store'])->name('kalibrasi.store');
+    Route::get('/kalibrasi/sertifikat/{id}/view', [KalibrasiController::class, 'viewSertifikat'])->name('kalibrasi.sertifikat_view');
+    
     // --- HISTORI OPERASIONAL (Mandiri) ---
     // Halaman Utama & Filter
     Route::get('/histori-operasional', [HistoriOperasionalController::class, 'index'])->name('histori.index');
     
+    // --- JADWAL DINAS (Baru) ---
+    Route::get('/jadwal-dinas', [JadwalDinasController::class, 'index'])->name('jadwal_dinas.index');
+    Route::get('/jadwal-dinas/create', [JadwalDinasController::class, 'create'])->name('jadwal_dinas.create');
+    Route::post('/jadwal-dinas/store', [JadwalDinasController::class, 'store'])->name('jadwal_dinas.store');
+    Route::get('/jadwal-dinas/download', [JadwalDinasController::class, 'download'])->name('jadwal-dinas.download');
+
     // Export Laporan Keseluruhan (Tombol Unduh di atas tabel)
     Route::get('/histori-operasional/export', [HistoriOperasionalController::class, 'export'])->name('histori.export');
     
@@ -99,4 +114,22 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/histori-operasional/{id}', [HistoriOperasionalController::class, 'show'])->name('histori.show');
     Route::get('/histori-operasional/download/{id}', [HistoriOperasionalController::class, 'downloadSingle'])->name('histori.download-single');
     Route::get('/histori/{id}/riwayat', [HistoriOperasionalController::class, 'downloadRiwayat'])->name('histori.riwayat');
+
+Route::prefix('logbook')->name('logbook.')->group(function () {
+ 
+    // Daftar semua logbook (metadata)
+    Route::get('/',         [LogbookController::class, 'index'])->name('index');
+ 
+    // Detail isi logbook (tabel harian dari pengecekan)
+    Route::get('/{id}',     [LogbookController::class, 'show'])->name('show');
+ 
+    // Tambah logbook baru
+    Route::post('/store',   [LogbookController::class, 'store'])->name('store');
+ 
+    // Update metadata logbook
+    Route::put('/update/{id}',  [LogbookController::class, 'update'])->name('update');
+ 
+    // Hapus logbook
+    Route::delete('/delete/{id}', [LogbookController::class, 'destroy'])->name('destroy');
+});
 });
