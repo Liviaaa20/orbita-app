@@ -159,7 +159,12 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
         Route::post('/reject-kanit/{id}',        [LogbookController::class, 'rejectKanit'])->name('reject-kanit');
         Route::post('/approve-koordinator/{id}', [LogbookController::class, 'approveKoordinator'])->name('approve-koordinator');
         Route::post('/reject-koordinator/{id}',  [LogbookController::class, 'rejectKoordinator'])->name('reject-koordinator');
+
+        Route::get('/logbook/get-alat/{kategori}',
+            [LogbookController::class, 'getAlatByKategori']
+        )->name('logbook.getAlat');
     });
+    
          // Download PDF (hanya approved_final)
         Route::get('/download-pdf/{id}', [LogbookController::class, 'downloadPdf'])->name('download-pdf');
 });

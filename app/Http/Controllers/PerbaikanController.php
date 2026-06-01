@@ -15,12 +15,12 @@ class PerbaikanController extends Controller
     // ── Semua role yang boleh tambah permintaan (KECUALI admin) ──
     // Disesuaikan dengan nama role di database (case-sensitive!)
     protected $roleBisaInput = [
-        'Teknisi',
+        'teknisi',
         'Observer',
         'Tata Usaha',
-        'Forecaster',   // ← ditambahkan
-        'Kepala Unit',
-        'Koordinator',  // ← ditambahkan
+        'Forecaster',
+        'Kepala Lapangan',
+        'Koordinator',
     ];
 
     public function index()
@@ -31,6 +31,7 @@ class PerbaikanController extends Controller
 
     public function create()
     {
+        // dd(Auth::user()->role->nama_role);
         // Cek role — gunakan tanpa strtolower agar cocok dengan DB
         $userRole = Auth::user()->role->nama_role ?? '';
         if (!in_array($userRole, $this->roleBisaInput)) {
@@ -104,29 +105,36 @@ class PerbaikanController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        if (Auth::user()->role->nama_role !== 'admin') {
-            return abort(403);
-        }
-
-        $request->validate([
-            'status'  => 'required|in:onproses,selesai',
-            'catatan' => 'nullable|string',
-        ]);
-
-        $perbaikan = Perbaikan::findOrFail($id);
-
-        $updateData = [
-            'catatan' => $request->catatan ?? $perbaikan->catatan,
-            'status'  => $request->status,
-        ];
-
-        $updateData['tgl_selesai'] = $request->status == 'selesai' ? now() : null;
-
-        $perbaikan->update($updateData);
-        return back()->with('success', 'Status dan catatan berhasil diperbarui!');
+public function update(Request $request, $id)
+{
+    if (Auth::user()->role->nama_role !== 'admin') {
+        return abort(403);
     }
+
+    $request->validate([
+        'status'  => 'required|in:onproses,selesai',
+        'catatan' => 'nullable|string',
+    ]);
+
+    $perbaikan = Perbaikan::findOrFail($id);
+
+    $updateData = [
+        'catatan' => $request->catatan,
+        'status'  => $request->status,
+    ];
+
+    $updateData['tgl_selesai'] =
+        $request->status == 'selesai'
+            ? now()
+            : null;
+
+    $perbaikan->update($updateData);
+
+    return back()->with(
+        'success',
+        'Status dan catatan berhasil diperbarui!'
+    );
+}
 
     public function download($id)
     {

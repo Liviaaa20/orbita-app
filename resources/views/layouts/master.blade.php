@@ -127,30 +127,33 @@
     <div class="sidebar">
     
 @php
-  $userRole = strtolower(Auth::user()->role->nama_role ?? '');
+    $userRole = strtolower(trim(Auth::user()->role->nama_role ?? ''));
 
-  $isAdmin = ($userRole == 'admin');
+    $isAdmin = ($userRole == 'admin');
 
-  $isTeknisi = ($userRole == 'teknisi');
+    $isTeknisi = ($userRole == 'teknisi');
 
-  // Kanit / Kepala Unit
-  $isKepalaUnit = in_array($userRole, [
-      'kepala unit',
-      'kepala_unit',
-      'kanit'
-  ]);
+    $isKepalaLapangan = in_array($userRole, [
+        'kepala lapangan',
+        'kepala_lapangan',
+        'kalap'
+    ]);
 
-  // Koordinator
-  $isKoordinator = ($userRole == 'koordinator');
+    $isKoordinator = ($userRole == 'koordinator');
 
-  // Role operasional yang diizinkan menginput perbaikan
-  $isStaffOps = in_array($userRole, [
-      'tu',
-      'tata usaha',
-      'observer',
-      'forecaster',
-      'forcaster'
-  ]);
+    $isObserver = ($userRole == 'observer');
+
+    $isTU = in_array($userRole, [
+        'tata usaha',
+        'tu'
+    ]);
+
+    $isForecaster = in_array($userRole, [
+        'forecaster',
+        'forcaster'
+    ]);
+
+    $isStaffOps = $isObserver || $isTU || $isForecaster;
 @endphp
 
 <nav class="mt-3">
@@ -210,7 +213,7 @@
 {{-- ===================================================== --}}
 {{-- 3. MASTER DATA (ADMIN & TEKNISI) --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi)
+@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
 
 <li class="nav-item {{ request()->is('kategori*')
     || request()->is('sub-kategori*')
@@ -269,10 +272,12 @@
 
     </ul>
 </li>
+@endif
 
 {{-- ===================================================== --}}
 {{-- 4. MAINTENANCE --}}
 {{-- ===================================================== --}}
+@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
 <li class="nav-item {{ request()->is('maintenance*') ? 'menu-open' : '' }}">
 
     <a href="#"
@@ -312,7 +317,7 @@
 {{-- ===================================================== --}}
 {{-- 5. JADWAL DINAS --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaUnit || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
 
 <li class="nav-item {{ request()->is('jadwal-dinas*') ? 'menu-open' : '' }}">
 
@@ -340,7 +345,7 @@
         </li>
 
         {{-- Kanit & Koordinator --}}
-        @if($isKepalaUnit || $isKoordinator)
+        @if($isAdmin || $isKepalaLapangan)
         <li class="nav-item">
             <a href="{{ route('jadwal_dinas.create') }}"
                class="nav-link px-4 {{ request()->is('jadwal-dinas/create') ? 'active' : '' }}">
@@ -373,7 +378,7 @@
 {{-- ===================================================== --}}
 {{-- 7. KALIBRASI & HISTORI --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi)
+@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
 
 <li class="nav-item">
     <a href="{{ route('kalibrasi.index') }}"
@@ -398,7 +403,7 @@
 {{-- ===================================================== --}}
 {{-- 8. LOGBOOK --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaUnit || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
 
 <li class="nav-item">
 

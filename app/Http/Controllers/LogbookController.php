@@ -488,4 +488,18 @@ class LogbookController extends Controller
 
         return $pdf->download($namaFile);
     }
+    public function getAlatByKategori($kategoriId)
+{
+    $alat = \App\Models\Alat::where('kategori_id', $kategoriId)->first();
+
+    if (!$alat) {
+        return response()->json(null);
+    }
+
+    return response()->json([
+        'jenis_alat' => $alat->jenis_alat,
+        'lokasi' => $alat->lokasi,
+        'periode' => $alat->periode,
+    ]);
+}
 }

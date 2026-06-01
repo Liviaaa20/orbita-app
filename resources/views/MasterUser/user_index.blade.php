@@ -56,17 +56,80 @@
                                 </button>
 
                                 <!-- Tombol Hapus -->
-                                <button type="button" class="btn btn-sm btn-light border" 
-                                        onclick="if(confirm('Yakin ingin menghapus user ini?')) { document.getElementById('delete-form-{{ $user->id }}').submit(); }">
+                                <button type="button"
+                                        class="btn btn-sm btn-light border"
+                                        data-toggle="modal"
+                                        data-target="#modalDelete{{ $user->id }}">
                                     <i class="fas fa-trash text-danger"></i>
                                 </button>
-                                <form id="delete-form-{{ $user->id }}" action="{{ route('user.destroy', $user->id) }}" method="POST" style="display: none;">
-                                    @csrf @method('DELETE')
-                                </form>
                             </div>
                         </td>
                     </tr>
+                    <!-- Modal Delete -->
+                    <div class="modal fade" id="modalDelete{{ $user->id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <form action="{{ route('user.destroy', $user->id) }}" method="POST">
+                                @csrf
+                                @method('DELETE')
 
+                                <div class="modal-content border-0 shadow">
+
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">
+                                            <i class="fas fa-user-times mr-2"></i>
+                                            Hapus User
+                                        </h5>
+
+                                        <button type="button"
+                                                class="close text-white"
+                                                data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="modal-body text-center">
+
+                                        <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                                        <h5 class="font-weight-bold">
+                                            Yakin ingin menghapus user ini?
+                                        </h5>
+
+                                        <p class="mb-1">
+                                            <strong>{{ $user->name }}</strong>
+                                        </p>
+
+                                        <p class="text-muted mb-1">
+                                            {{ $user->email }}
+                                        </p>
+
+                                        <span class="badge badge-info px-3 py-2">
+                                            {{ $user->role->nama_role ?? '-' }}
+                                        </span>
+
+                                        <p class="text-muted small mt-3 mb-0">
+                                            Data user yang sudah dihapus tidak dapat dikembalikan.
+                                        </p>
+
+                                    </div>
+
+                                    <div class="modal-footer justify-content-center">
+                                        <button type="button"
+                                                class="btn btn-secondary"
+                                                data-dismiss="modal">
+                                            Batal
+                                        </button>
+
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash-alt mr-1"></i>
+                                            Ya, Hapus
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <!-- Modal Edit -->
                     <div class="modal fade" id="modalEdit{{ $user->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                         <div class="modal-dialog">

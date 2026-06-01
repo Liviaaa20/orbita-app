@@ -113,14 +113,12 @@
 
                     {{-- ADMIN: Submit --}}
                     @if($isAdmin && $logbook->bisaSubmit())
-                        <form action="{{ route('logbook.submit', $logbook->id) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit"
-                                    class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3"
-                                    onclick="return confirm('Ajukan logbook ini ke Kepala Unit?')">
-                                <i class="fas fa-paper-plane mr-1"></i> Ajukan ke Kanit
-                            </button>
-                        </form>
+                        <button type="button"
+                                class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3"
+                                data-toggle="modal"
+                                data-target="#modalSubmitKanit">
+                            <i class="fas fa-paper-plane mr-1"></i> Ajukan ke Kanit
+                        </button>
                     @endif
 
                     {{-- KANIT: Approve / Reject --}}
@@ -711,7 +709,59 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="modalSubmitKanit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
 
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Ajukan Logbook
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+
+            <form action="{{ route('logbook.submit', $logbook->id) }}" method="POST">
+                @csrf
+
+                <div class="modal-body">
+
+                    <div class="text-center mb-3">
+                        <i class="fas fa-file-upload fa-3x text-primary"></i>
+                    </div>
+
+                    <h5 class="text-center font-weight-bold">
+                        Ajukan logbook ke Kepala Unit?
+                    </h5>
+
+                    <p class="text-center text-muted mb-0">
+                        Logbook
+                        <strong>{{ $logbook->jenis_logbook }}</strong>
+                        akan dikirim ke Kepala Unit (Kanit) untuk proses
+                        pemeriksaan dan persetujuan.
+                    </p>
+
+                </div>
+
+                <div class="modal-footer justify-content-center">
+                    <button type="button"
+                            class="btn btn-light border"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane mr-1"></i>
+                        Ya, Ajukan
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')

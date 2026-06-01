@@ -125,15 +125,89 @@
                                                         data-kategori="{{ $kat->id }}">
                                                         <i class="fas fa-pen"></i>
                                                     </button>
-                                                    <form action="{{ route('sub-kategori.destroy', $sub->id) }}" method="POST" class="d-inline delete-form">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm text-danger" onclick="return confirm('Hapus sub kategori ini?')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button"
+                                                            class="btn btn-sm text-danger"
+                                                            data-toggle="modal"
+                                                            data-target="#modalDeleteSubKategori{{ $sub->id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
+                                        <!-- Modal Delete Sub Kategori -->
+<div class="modal fade" id="modalDeleteSubKategori{{ $sub->id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('sub-kategori.destroy', $sub->id) }}" method="POST">
+            @csrf
+            @method('DELETE')
+
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Hapus Sub Kategori
+                    </h5>
+
+                    <button type="button"
+                            class="close text-white"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body text-center">
+
+                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                    <h5 class="font-weight-bold">
+                        Yakin ingin menghapus sub kategori ini?
+                    </h5>
+
+                    <div class="alert alert-light border text-left mt-3 mb-0">
+
+                        <p class="mb-2">
+                            <strong>Kode :</strong>
+                            {{ $sub->kode_sub_kategori }}
+                        </p>
+
+                        <p class="mb-2">
+                            <strong>Sub Kategori :</strong>
+                            {{ $sub->nama_sub_kategori }}
+                        </p>
+
+                        <p class="mb-0">
+                            <strong>Kategori :</strong>
+                            {{ $sub->kategori->nama_kategori ?? '-' }}
+                        </p>
+
+                    </div>
+
+                    <small class="text-muted d-block mt-3">
+                        Data yang sudah dihapus tidak dapat dikembalikan.
+                    </small>
+
+                </div>
+
+                <div class="modal-footer justify-content-center">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i>
+                        Ya, Hapus
+                    </button>
+
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
                                     @empty
                                         <tr class="collapse show group-{{ $kat->id }}">
                                             <td colspan="3" class="text-center text-muted small py-3">

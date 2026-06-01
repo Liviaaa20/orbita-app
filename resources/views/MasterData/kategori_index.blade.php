@@ -54,12 +54,11 @@
                                             <i class="fas fa-pen"></i>
                                         </button>
 
-                                        <form action="{{ route('kategori.destroy', $item->id) }}" method="POST" style="display:inline;">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-sm text-secondary" onclick="return confirm('Hapus data?')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button class="btn btn-sm text-danger"
+                                                data-toggle="modal"
+                                                data-target="#modalDeleteKategori{{ $item->id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -71,7 +70,80 @@
         </div>
     </div>
 </div>
+<!-- Modal Delete Kategori -->
+<div class="modal fade" id="modalDeleteKategori{{ $item->id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('kategori.destroy', $item->id) }}" method="POST">
+            @csrf
+            @method('DELETE')
 
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Hapus Kategori
+                    </h5>
+
+                    <button type="button"
+                            class="close text-white"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body text-center">
+
+                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                    <h5 class="font-weight-bold">
+                        Yakin ingin menghapus kategori ini?
+                    </h5>
+
+                    <div class="alert alert-light border mt-3 mb-0 text-left">
+
+                        <p class="mb-2">
+                            <strong>Kode :</strong>
+                            {{ $item->kode_kategori }}
+                        </p>
+
+                        <p class="mb-2">
+                            <strong>Nama :</strong>
+                            {{ $item->nama_kategori }}
+                        </p>
+
+                        <p class="mb-0">
+                            <strong>Jenis :</strong>
+                            <span class="badge {{ $item->jenis == 'Sistem' ? 'badge-primary' : 'badge-secondary' }}">
+                                {{ $item->jenis }}
+                            </span>
+                        </p>
+
+                    </div>
+
+                    <small class="text-muted d-block mt-3">
+                        Data yang dihapus tidak dapat dikembalikan.
+                    </small>
+
+                </div>
+
+                <div class="modal-footer justify-content-center">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i>
+                        Ya, Hapus
+                    </button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
 {{-- MODAL TAMBAH --}}
 <div class="modal fade" id="modalTambahKategori" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-md" role="document">

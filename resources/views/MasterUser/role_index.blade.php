@@ -44,15 +44,68 @@
                             <button class="btn btn-sm btn-light border" data-toggle="modal" data-target="#modalEdit{{ $role->id }}">
                                 <i class="fas fa-edit text-primary"></i>
                             </button>
-                            <form action="{{ route('role.destroy', $role->id) }}" method="POST" class="d-inline">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-light border" onclick="return confirm('Hapus role ini?')">
-                                    <i class="fas fa-trash text-danger"></i>
-                                </button>
-                            </form>
+                            <button class="btn btn-sm btn-light border"
+                                    data-toggle="modal"
+                                    data-target="#modalDelete{{ $role->id }}">
+                                <i class="fas fa-trash text-danger"></i>
+                            </button>
                         </td>
                     </tr>
+                    <!-- Modal Delete -->
+                    <div class="modal fade" id="modalDelete{{ $role->id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <form action="{{ route('role.destroy', $role->id) }}" method="POST">
+                                @csrf
+                                @method('DELETE')
 
+                                <div class="modal-content border-0 shadow">
+
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">
+                                            <i class="fas fa-trash-alt mr-2"></i>
+                                            Hapus Role
+                                        </h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="modal-body text-center">
+
+                                        <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                                        <h5 class="font-weight-bold">
+                                            Yakin ingin menghapus role ini?
+                                        </h5>
+
+                                        <p class="mb-1">
+                                            Role:
+                                            <strong>{{ $role->nama_role }}</strong>
+                                        </p>
+
+                                        <p class="text-muted small mb-0">
+                                            Data yang sudah dihapus tidak dapat dikembalikan.
+                                        </p>
+
+                                    </div>
+
+                                    <div class="modal-footer justify-content-center">
+                                        <button type="button"
+                                                class="btn btn-secondary"
+                                                data-dismiss="modal">
+                                            Batal
+                                        </button>
+
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash mr-1"></i>
+                                            Ya, Hapus
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <!-- Modal Edit -->
                     <div class="modal fade" id="modalEdit{{ $role->id }}" tabindex="-1">
                         <div class="modal-dialog">

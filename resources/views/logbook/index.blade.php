@@ -282,13 +282,15 @@
                                             <i class="fas fa-pencil-alt text-warning"></i>
                                         </button>
 
-                                        <form action="{{ route('logbook.submit', $log->id) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <button type="submit" class="btn btn-sm btn-gradient-submit" title="Ajukan"
-                                                    onclick="return confirm('Ajukan logbook ini ke Kepala Unit?')">
-                                                <i class="fas fa-paper-plane"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                                class="btn btn-sm btn-gradient-submit"
+                                                title="Ajukan"
+                                                data-toggle="modal"
+                                                data-target="#modalSubmitLogbook"
+                                                data-id="{{ $log->id }}"
+                                                data-jenis="{{ $log->jenis_logbook }}">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
 
                                         <button type="button" class="btn btn-sm btn-light border btn-delete"
                                                 title="Hapus" data-toggle="modal" data-target="#modalDeleteLogbook"
@@ -493,7 +495,60 @@
         </div>
     </div>
 </div>
+<!-- Modal Ajukan ke Kanit -->
+<div class="modal fade" id="modalSubmitLogbook" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow">
+            
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Ajukan Logbook
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
 
+            <form id="formSubmitLogbook" method="POST">
+                @csrf
+
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-file-upload fa-3x text-primary"></i>
+                    </div>
+
+                    <p class="text-center mb-1">
+                        Apakah Anda yakin ingin mengajukan logbook:
+                    </p>
+
+                    <h6 id="namaLogbookSubmit"
+                        class="text-center font-weight-bold text-primary">
+                    </h6>
+
+                    <p class="text-center text-muted mt-3 mb-0">
+                        Logbook akan dikirim ke <strong>Kepala Unit (Kanit)</strong>
+                        untuk proses approval.
+                    </p>
+                </div>
+
+                <div class="modal-footer justify-content-center">
+                    <button type="button"
+                            class="btn btn-light border"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane mr-1"></i>
+                        Ya, Ajukan
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
 {{-- Modal Approve/Reject — sama seperti sebelumnya, tidak berubah --}}
 @include('logbook._modals_approval')
 
@@ -526,5 +581,18 @@
     @if(session('error'))
         Swal.fire({ icon: 'error', title: 'Gagal', text: '{{ session('error') }}', timer: 3000, showConfirmButton: false });
     @endif
+    $('#modalSubmitLogbook').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget);
+
+        let id = button.data('id');
+        let jenis = button.data('jenis');
+
+        $('#namaLogbookSubmit').text(jenis);
+
+        $('#formSubmitLogbook').attr(
+            'action',
+            '/logbook/' + id + '/submit'
+        );
+    });
 </script>
 @endpush

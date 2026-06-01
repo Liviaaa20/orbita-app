@@ -97,7 +97,7 @@
                 </h3>
 
                 @php
-                    $roleBisaInput = ['teknisi', 'kepala unit', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
+                    $roleBisaInput = ['teknisi', 'kepala lapangan', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
                     $userRole = strtolower(Auth::user()->role->nama_role ?? '');
                 @endphp
 
@@ -375,4 +375,70 @@
         </div>
     </div>
 </div>
+@foreach($perbaikans as $p)
+
+<!-- Modal Edit Catatan -->
+<div class="modal fade" id="modalCatatan{{ $p->id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form action="{{ route('perbaikan.update', $p->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title text-white">
+                        Edit Perbaikan #{{ $p->no_tiket }}
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" class="form-control">
+                            <option value="onproses"
+                                {{ $p->status == 'onproses' ? 'selected' : '' }}>
+                                On Proses
+                            </option>
+
+                            <option value="selesai"
+                                {{ $p->status == 'selesai' ? 'selected' : '' }}>
+                                Selesai
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Catatan</label>
+                        <textarea name="catatan"
+                                  rows="4"
+                                  class="form-control">{{ $p->catatan }}</textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Simpan Perubahan
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@endforeach
 @endsection

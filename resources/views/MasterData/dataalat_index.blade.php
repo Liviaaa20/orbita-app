@@ -123,15 +123,97 @@
                                     <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAlat{{ $item->id }}" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus alat {{ $item->nama_alat }}?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                            class="btn btn-danger btn-sm"
+                                            title="Hapus"
+                                            data-toggle="modal"
+                                            data-target="#modalDeleteAlat{{ $item->id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
+                        <!-- Modal Delete Data Alat -->
+<div class="modal fade" id="modalDeleteAlat{{ $item->id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST">
+            @csrf
+            @method('DELETE')
+
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Hapus Data Alat
+                    </h5>
+
+                    <button type="button"
+                            class="close text-white"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body text-center">
+
+                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                    <h5 class="font-weight-bold">
+                        Yakin ingin menghapus alat ini?
+                    </h5>
+
+                    <div class="alert alert-light border text-left mt-3 mb-0">
+
+                        <p class="mb-2">
+                            <strong>Kode Alat :</strong>
+                            {{ $item->kode_alat }}
+                        </p>
+
+                        <p class="mb-2">
+                            <strong>Nama Alat :</strong>
+                            {{ $item->nama_alat }}
+                        </p>
+
+                        <p class="mb-2">
+                            <strong>Kategori :</strong>
+                            {{ $item->kategori->nama_kategori ?? '-' }}
+                        </p>
+
+                        @if(isset($item->subKategori))
+                        <p class="mb-0">
+                            <strong>Sub Kategori :</strong>
+                            {{ $item->subKategori->nama_sub_kategori ?? '-' }}
+                        </p>
+                        @endif
+
+                    </div>
+
+                    <small class="text-muted d-block mt-3">
+                        Data alat yang dihapus tidak dapat dikembalikan.
+                    </small>
+
+                </div>
+
+                <div class="modal-footer justify-content-center">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i>
+                        Ya, Hapus
+                    </button>
+
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
                         @endforeach
                     </tbody>
                 </table>
