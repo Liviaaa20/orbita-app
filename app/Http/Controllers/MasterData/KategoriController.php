@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
-use App\Models\Kategori; // Pastikan model Kategori di-import
+use App\Models\Kategori; 
 use Illuminate\Http\Request;
 
 class KategoriController extends Controller
@@ -14,28 +14,28 @@ class KategoriController extends Controller
         return view('MasterData.kategori_index', compact('kategori'));
     }
 
-    // TAMBAHKAN METHOD STORE INI
     public function store(Request $request)
     {
         $request->validate([
             'kode_kategori' => 'required|unique:kategoris,kode_kategori',
             'nama_kategori' => 'required',
-            'tahun_pengadaan' => 'required',
-            'merk' => 'required',
-            'jenis' => 'required',
+            'jenis'         => 'required',
         ]);
-    
-        // Menggunakan create untuk menyimpan data
-        Kategori::create($request->all());
-    
+        
+        // PERBAIKAN: Definisikan kolomnya satu per satu secara eksplisit
+        Kategori::create([
+            'kode_kategori' => $request->kode_kategori,
+            'nama_kategori' => $request->nama_kategori,
+            'jenis'         => $request->jenis,
+        ]);
+        
         return redirect()->back()->with('success', 'Kategori Berhasil Ditambah');
     }
+
     public function update(Request $request, $id)
     {
         $request->validate([
             'nama_kategori'   => 'required',
-            'tahun_pengadaan' => 'required|numeric',
-            'merk'            => 'required',
             'jenis'           => 'required',
         ]);
 
@@ -43,17 +43,12 @@ class KategoriController extends Controller
         
         $kategori->update([
             'nama_kategori'   => $request->nama_kategori,
-            'tahun_pengadaan' => $request->tahun_pengadaan,
-            'merk'            => $request->merk,
             'jenis'           => $request->jenis,
         ]);
 
         return redirect()->back()->with('success', 'Data kategori berhasil diperbarui!');
     }
 
-    /**
-     * Hapus data kategori.
-     */
     public function destroy($id)
     {
         $kategori = Kategori::findOrFail($id);
@@ -61,5 +56,4 @@ class KategoriController extends Controller
 
         return redirect()->back()->with('success', 'Data kategori berhasil dihapus!');
     }
-
 }

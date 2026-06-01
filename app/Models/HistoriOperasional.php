@@ -11,6 +11,7 @@ class HistoriOperasional extends Model
 
     protected $fillable = [
     'alat_id',
+    'kategori_id',
     'user_id',
     'jenis_aktivitas',
     'waktu',
@@ -28,5 +29,10 @@ class HistoriOperasional extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+        public function kategori(): BelongsTo
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_id');
     }
 }

@@ -177,7 +177,7 @@
     @if($isExist)
         @if($canMaintain)
             {{-- Role Admin & Teknisi bisa klik --}}
-            <a href="{{ route('maintenance.form-master', ['type' => 'harian', 'tanggal' => $today->format('Y-m-d'), 'waktu' => $s]) }}" 
+            <a href="{{ route('maintenance.form-master', ['type' => 'harian', 'tanggal' => $today->format('Y-m-d'), 'waktu' => $s]) }}"
                class="btn btn-block d-flex justify-content-between align-items-center px-0" 
                style="color: #2d3436; font-weight: 700; text-decoration: none;">
                 <span>{{ $isDone ? 'Lakukan Pengecekan' : 'Lakukan Pengecekan' }}</span>
@@ -261,11 +261,11 @@
     @if($canMaintain)
         {{-- Role Admin & Teknisi --}}
         <a href="{{ route('maintenance.form-master', [
-                'type' => 'mingguan', 
-                'tanggal' => $today->format('Y-m-d'), 
-                'waktu' => $hariIni,
-                'kategori_id' => $kategori->id_kategori 
-            ]) }}" 
+        'type' => 'mingguan', 
+        'tanggal' => $today->format('Y-m-d'), 
+        'waktu' => $hariIni,
+        'kategori_id' => $kategori->id_kategori 
+        ]) }}" 
            class="btn btn-block d-flex justify-content-between align-items-center px-0" 
            style="color: #2d3436; font-weight: 700; text-decoration: none;">
             <span>{{ $kategori->is_done ? 'Lakukan Maintenance' : 'Lakukan Maintenance' }}</span>

@@ -12,19 +12,27 @@ use Illuminate\Support\Facades\DB;
 
 class PerbaikanController extends Controller
 {
-    protected $roleBisaInput = ['teknisi', 'kepala unit', 'observer', 'forcaster', 'tata usaha'];
+    // ── Semua role yang boleh tambah permintaan (KECUALI admin) ──
+    // Disesuaikan dengan nama role di database (case-sensitive!)
+    protected $roleBisaInput = [
+        'Teknisi',
+        'Observer',
+        'Tata Usaha',
+        'Forecaster',   // ← ditambahkan
+        'Kepala Unit',
+        'Koordinator',  // ← ditambahkan
+    ];
 
     public function index()
     {
-        // Langsung ambil semua data tanpa membedakan role
         $perbaikans = Perbaikan::latest()->get();
-
         return view('perbaikan.index', compact('perbaikans'));
     }
 
     public function create()
     {
-        $userRole = strtolower(Auth::user()->role->nama_role ?? '');
+        // Cek role — gunakan tanpa strtolower agar cocok dengan DB
+        $userRole = Auth::user()->role->nama_role ?? '';
         if (!in_array($userRole, $this->roleBisaInput)) {
             return abort(403, 'Otoritas tidak cukup.');
         }
@@ -60,7 +68,6 @@ class PerbaikanController extends Controller
 
             Perbaikan::create($data);
 
-            // Log ke Histori Operasional
             HistoriOperasional::create([
                 'alat_id'         => $request->alat_id,
                 'user_id'         => Auth::id(),
@@ -73,68 +80,51 @@ class PerbaikanController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->route('perbaikan.index')->with('success', 'Permintaan terkirim!');
+            return redirect()->route('perbaikan.index')->with('success', 'Permintaan berhasil dikirim!');
         } catch (\Exception $e) {
             DB::rollback();
             return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
     }
 
-    /**
-     * FUNGSI VALIDASI (Khusus Tombol Centang/Silang)
-     */
     public function validasi(Request $request, $id)
     {
-        if (strtolower(Auth::user()->role->nama_role ?? '') !== 'admin') {
+        if (Auth::user()->role->nama_role !== 'admin') {
             return abort(403);
         }
 
         $perbaikan = Perbaikan::findOrFail($id);
-        
+
         if ($request->action == 'terima') {
-            $perbaikan->update([
-                'tgl_diterima' => now(), // MENGISI TANGGAL TERIMA SAAT DICENTANG
-            ]);
+            $perbaikan->update(['tgl_diterima' => now()]);
             return back()->with('success', 'Tiket berhasil divalidasi/diterima.');
         } else {
-            // Jika disilang (tolak/batal), kosongkan tgl_diterima
-            $perbaikan->update([
-                'tgl_diterima' => null,
-            ]);
+            $perbaikan->update(['tgl_diterima' => null]);
             return back()->with('info', 'Validasi dibatalkan.');
         }
     }
 
-    /**
-     * FUNGSI UPDATE STATUS & CATATAN (Dropdown)
-     */
     public function update(Request $request, $id)
     {
-        if (strtolower(Auth::user()->role->nama_role ?? '') !== 'admin') {
+        if (Auth::user()->role->nama_role !== 'admin') {
             return abort(403);
         }
 
         $request->validate([
             'status'  => 'required|in:onproses,selesai',
-            'catatan' => 'nullable|string'
+            'catatan' => 'nullable|string',
         ]);
 
         $perbaikan = Perbaikan::findOrFail($id);
-        
+
         $updateData = [
             'catatan' => $request->catatan ?? $perbaikan->catatan,
             'status'  => $request->status,
         ];
 
-        // LOGIKA TANGGAL SELESAI
-        if ($request->status == 'selesai') {
-            $updateData['tgl_selesai'] = now(); // ISI TANGGAL SELESAI PAS STATUS SELESAI
-        } else {
-            $updateData['tgl_selesai'] = null; // KOSONGKAN JIKA BALIK KE PROSES
-        }
+        $updateData['tgl_selesai'] = $request->status == 'selesai' ? now() : null;
 
         $perbaikan->update($updateData);
-
         return back()->with('success', 'Status dan catatan berhasil diperbarui!');
     }
 

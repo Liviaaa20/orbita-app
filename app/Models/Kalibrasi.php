@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Kalibrasi extends Model
 {
     protected $fillable = [
-        'alat_id',
+        'kategori_id',
         'tanggal_mulai',
         'tanggal_selesai',
         'kalibrator',
@@ -18,9 +18,15 @@ class Kalibrasi extends Model
         'petugas',
     ];
 
-    /**
-     * Relasi Eloquent ke model Alat
+/**
+     * Relasi ke Kategori Alat
      */
+    public function kategori(): BelongsTo
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_id');
+    }
+
+    // Relasi ke Alat ( Opsional, mungkin needed untuk histori, tapi sekarang fokus pada Kategori )
     public function alat(): BelongsTo
     {
         return $this->belongsTo(Alat::class, 'alat_id');

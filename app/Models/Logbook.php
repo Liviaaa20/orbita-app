@@ -10,7 +10,7 @@ class Logbook extends Model
     use HasFactory;
 
     protected $fillable = [
-        'sub_kategori_id',
+        'kategori_id',
         'jenis_logbook',
         'jenis_alat',
         'lokasi_tempat',
@@ -27,17 +27,18 @@ class Logbook extends Model
     ];
 
     protected $casts = [
-        'terakhir_diperbarui'    => 'date',
-        'approved_kanit_at'      => 'datetime',
-        'approved_koordinator_at'=> 'datetime',
+        'terakhir_diperbarui'     => 'date',
+        'approved_kanit_at'       => 'datetime',
+        'approved_koordinator_at' => 'datetime',
     ];
 
     // ============================================================
     // RELASI
     // ============================================================
-    public function subKategori()
+
+    public function kategori()
     {
-        return $this->belongsTo(SubKategori::class, 'sub_kategori_id');
+        return $this->belongsTo(Kategori::class, 'kategori_id');
     }
 
     public function approvedKanitOleh()
@@ -51,12 +52,16 @@ class Logbook extends Model
     }
 
     // ============================================================
-    // HELPER: Ambil semua alat dari sub kategori logbook ini
+    // HELPER: Ambil semua alat dari kategori logbook ini
+    // Melalui sub_kategoris → alats
     // ============================================================
     public function getAlats()
     {
-        if (!$this->sub_kategori_id) return collect();
-        return Alat::where('sub_kategori_id', $this->sub_kategori_id)->get();
+        if (!$this->kategori_id) return collect();
+
+        return Alat::whereHas('subKategori', function ($q) {
+            $q->where('kategori_id', $this->kategori_id);
+        })->orderBy('nama_alat')->get();
     }
 
     // ============================================================
@@ -64,15 +69,15 @@ class Logbook extends Model
     // ============================================================
     public function getLabelStatus(): string
     {
-        return match($this->status) {
-            'draft'                  => 'Draft',
-            'pending_kanit'          => 'Menunggu Kanit',
-            'approved_kanit'         => 'Disetujui Kanit',
-            'rejected_kanit'         => 'Ditolak Kanit',
-            'pending_koordinator'    => 'Menunggu Koordinator',
-            'approved_final'         => 'Disetujui Final',
-            'rejected_koordinator'   => 'Ditolak Koordinator',
-            default                  => strtoupper($this->status),
+        return match ($this->status) {
+            'draft'                => 'Draft',
+            'pending_kanit'        => 'Menunggu Kanit',
+            'approved_kanit'       => 'Disetujui Kanit',
+            'rejected_kanit'       => 'Ditolak Kanit',
+            'pending_koordinator'  => 'Menunggu Koordinator',
+            'approved_final'       => 'Disetujui Final',
+            'rejected_koordinator' => 'Ditolak Koordinator',
+            default                => strtoupper($this->status),
         };
     }
 
@@ -81,20 +86,20 @@ class Logbook extends Model
     // ============================================================
     public function getBadgeStatus(): string
     {
-        return match($this->status) {
-            'draft'                  => 'secondary',
-            'pending_kanit'          => 'warning',
-            'approved_kanit'         => 'info',
-            'rejected_kanit'         => 'danger',
-            'pending_koordinator'    => 'warning',
-            'approved_final'         => 'success',
-            'rejected_koordinator'   => 'danger',
-            default                  => 'light',
+        return match ($this->status) {
+            'draft'                => 'secondary',
+            'pending_kanit'        => 'warning',
+            'approved_kanit'       => 'info',
+            'rejected_kanit'       => 'danger',
+            'pending_koordinator'  => 'warning',
+            'approved_final'       => 'success',
+            'rejected_koordinator' => 'danger',
+            default                => 'light',
         };
     }
 
     // ============================================================
-    // HELPER STATUS — cek apakah bisa didownload PDF
+    // HELPER: cek apakah bisa didownload PDF
     // ============================================================
     public function bisaDownload(): bool
     {
@@ -102,7 +107,7 @@ class Logbook extends Model
     }
 
     // ============================================================
-    // HELPER STATUS — cek apakah bisa disubmit ke kanit
+    // HELPER: cek apakah bisa disubmit ke kanit
     // ============================================================
     public function bisaSubmit(): bool
     {
@@ -114,7 +119,7 @@ class Logbook extends Model
     // ============================================================
     public static function getBadgeKondisi(string $kondisi): string
     {
-        return match(strtolower($kondisi)) {
+        return match (strtolower($kondisi)) {
             'baik'         => 'success',
             'rusak ringan' => 'warning',
             'rusak berat'  => 'danger',
@@ -129,7 +134,7 @@ class Logbook extends Model
     // ============================================================
     public static function getLabelKondisi(string $kondisi): string
     {
-        return match(strtolower($kondisi)) {
+        return match (strtolower($kondisi)) {
             'baik'         => 'BAIK',
             'rusak ringan' => 'RUSAK RINGAN',
             'rusak berat'  => 'RUSAK BERAT',

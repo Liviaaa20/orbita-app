@@ -2,49 +2,94 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Alat;
 use App\Models\Kalibrasi;
+use App\Models\Kategori;
 use App\Models\HistoriOperasional;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class KalibrasiController extends Controller
 {
+    /**
+     * Ambil nama role user via users.role_id → roles.nama_role
+     */
+    private function getUserRole(): string
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) return '';
+
+            // Load relasi role() BelongsTo → App\Models\Role
+            $role = $user->role;
+            if ($role && isset($role->nama_role)) {
+                return strtolower(trim($role->nama_role));
+            }
+        } catch (\Throwable $e) {
+            //
+        }
+        return '';
+    }
+
+    /** Admin & Teknisi → boleh input */
+    private function canInput(): bool
+    {
+        return in_array($this->getUserRole(), ['admin', 'teknisi']);
+    }
+
+    /** Admin, Teknisi, Kepala Unit, Koordinator → boleh lihat */
+    private function canView(): bool
+    {
+        return in_array($this->getUserRole(), [
+            'admin',
+            'teknisi',
+            'kepala unit',
+            'koordinator',
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function index()
     {
-        // Mengambil data kalibrasi dan daftar alat
-        $kalibrasis = Kalibrasi::with('alat')->latest()->get();
-        $alats = Alat::all();
+        if (!$this->canView()) {
+            abort(403, 'Anda tidak memiliki akses ke halaman kalibrasi.');
+        }
 
-        return view('kalibrasi.index', compact('kalibrasis', 'alats'));
+        $kalibrasis = Kalibrasi::with('kategori')->latest()->get();
+        $kategoris  = Kategori::all();
+        $canInput   = $this->canInput();
+
+        return view('kalibrasi.index', compact('kalibrasis', 'kategoris', 'canInput'));
     }
 
     public function store(Request $request)
     {
-        // Validasi format data inputan form
+        if (!$this->canInput()) {
+            abort(403, 'Anda tidak memiliki akses untuk menambah data kalibrasi.');
+        }
+
         $request->validate([
-            'alat_id'              => 'required',
+            'kategori_id'          => 'required|exists:kategoris,id',
             'tanggal_mulai'        => 'required|date',
             'tanggal_selesai'      => 'required|date|after_or_equal:tanggal_mulai',
             'kalibrator'           => 'required|string|max:255',
-            'nilai_koreksi'        => 'required|numeric',
-            'nilai_ketidakpastian' => 'required|numeric',
-            'sertifikat_pdf'       => 'nullable|file|mimes:pdf,jpeg,png,jpg|max:10485', // Ditambahkan ekstensi gambar jika user upload foto
-            'petugas'              => 'required|string|max:255',
+            'nilai_koreksi'        => 'nullable|numeric',
+            'nilai_ketidakpastian' => 'nullable|numeric',
+            'sertifikat_pdf'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'petugas'              => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
         try {
             $pathFile = null;
-            if ($request->hasFile('sertifikat_pdf')) {
-                $pathFile = $request->file('sertifikat_pdf')->store('sertifikat_kalibrasi', 'public');
+            if ($request->hasFile('sertifikat_pdf') && $request->file('sertifikat_pdf')->isValid()) {
+                $pathFile = $request->file('sertifikat_pdf')
+                    ->store('sertifikat_kalibrasi', 'public');
             }
 
-            // Menyimpan data ke tabel kalibrasis menggunakan kolom 'alat_id' yang valid di database kamu
-            $kalibrasi = Kalibrasi::create([
-                'alat_id'              => $request->alat_id,
+            Kalibrasi::create([
+                'kategori_id'          => $request->kategori_id,
                 'tanggal_mulai'        => $request->tanggal_mulai,
                 'tanggal_selesai'      => $request->tanggal_selesai,
                 'kalibrator'           => $request->kalibrator,
@@ -54,53 +99,54 @@ class KalibrasiController extends Controller
                 'petugas'              => $request->petugas,
             ]);
 
-            // Menyimpan log ke tabel histori_operasionals menggunakan kolom 'alat_id'
             HistoriOperasional::create([
-                'alat_id'         => $request->alat_id,
+                'kategori_id'     => $request->kategori_id,
                 'user_id'         => Auth::id(),
                 'jenis_aktivitas' => 'Kalibrasi Alat',
-                'waktu'           => now(), // Mengisi tanggal dan jam saat ini ke kolom waktu
-                'kategori'        => 'Maintenance', // Bisa disesuaikan dengan kategori di sistemmu
-                'lokasi'          => 'Laboratorium', // Bisa disesuaikan dengan lokasi alat
-                'deskripsi_hasil' => 'Alat telah dikalibrasi oleh ' . $request->kalibrator . ' dengan nilai koreksi ' . $request->nilai_koreksi,
-                'dokumen'         => $pathFile, // Menyimpan path gambar/PDF sertifikat ke histori juga
+                'waktu'           => now(),
+                'kategori'        => 'Maintenance',
+                'lokasi'          => 'Laboratorium',
+                'deskripsi_hasil' => 'Alat telah dikalibrasi oleh ' . $request->kalibrator
+                    . ' dengan nilai koreksi ' . ($request->nilai_koreksi ?? '-'),
+                'dokumen'         => $pathFile,
             ]);
 
             DB::commit();
             return redirect()->back()->with('success', 'Data kalibrasi berhasil ditambahkan!');
+
         } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->back()->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Gagal menyimpan data: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
-    /**
-     * Menampilkan berkas sertifikat (PDF/Gambar) langsung di browser tanpa download otomatis
-     */
     public function viewSertifikat($id)
-{
-    $kalibrasi = Kalibrasi::findOrFail($id);
+    {
+        $kalibrasi = Kalibrasi::findOrFail($id);
 
-    // 1. Validasi jika nama file di database ternyata kosong
-    if (!$kalibrasi->sertifikat_pdf) {
-        abort(404, 'File sertifikat belum diunggah atau tidak ditemukan.');
+        if (!$kalibrasi->sertifikat_pdf) {
+            abort(404, 'File sertifikat belum diunggah.');
+        }
+
+        $filePath = storage_path('app/public/' . $kalibrasi->sertifikat_pdf);
+
+        if (!file_exists($filePath)) {
+            abort(404, 'Berkas tidak ditemukan. Jalankan: php artisan storage:link');
+        }
+
+        $ekstensi  = strtolower(pathinfo($kalibrasi->sertifikat_pdf, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+        ];
+
+        return response()->file($filePath, [
+            'Content-Type'        => $mimeTypes[$ekstensi] ?? 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="sertifikat_kalibrasi_' . $id . '.' . $ekstensi . '"',
+        ]);
     }
-
-    // 2. Dapatkan path fisik file di dalam direktori storage (Gunakan path yang benar)
-    $filePath = storage_path('app/public/' . $kalibrasi->sertifikat_pdf);
-
-    // 3. Validasi jika fisik file tidak ada di dalam folder storage aplikasi
-    if (!file_exists($filePath)) {
-        abort(404, 'Berkas fisik sertifikat tidak ditemukan pada server.');
-    }
-
-    // 4. Membaca tipe konten berkas secara dinamis (PDF / PNG / JPG)
-    $mimeType = mime_content_type($filePath);
-
-    // 5. Alirkan file langsung ke browser dengan header INLINE agar tidak terdownload otomatis
-    return response()->file($filePath, [
-        'Content-Type' => $mimeType,
-        'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"'
-    ]);
-}
 }

@@ -13,19 +13,19 @@ return new class extends Migration
     {
         Schema::create('kalibrasis', function (Blueprint $table) {
             $table->id();
-            
-            // Kolom Relasi ke tabel alats (Pastikan nama tabelnya 'alats' dan primary key-nya 'id')
-            $table->foreignId('alat_id')->constrained('alats')->onDelete('cascade');
-            
-            // Kolom Informasi Kalibrasi
+
+            // Relasi ke tabel kategoris (bukan alats)
+            $table->foreignId('kategori_id')->constrained('kategoris')->onDelete('cascade');
+
+            // Informasi Kalibrasi
             $table->date('tanggal_mulai');
             $table->date('tanggal_selesai');
             $table->string('kalibrator');
-            $table->double('nilai_koreksi', 8, 2);
-            $table->double('nilai_ketidakpastian', 8, 2);
-            $table->string('sertifikat_pdf')->nullable(); // nullable karena opsional
-            $table->string('petugas');
-            
+            $table->double('nilai_koreksi', 10, 4)->nullable();
+            $table->double('nilai_ketidakpastian', 10, 4)->nullable();
+            $table->string('sertifikat_pdf')->nullable();
+            $table->string('petugas')->nullable();
+
             $table->timestamps();
         });
     }

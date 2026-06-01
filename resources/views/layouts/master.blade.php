@@ -125,8 +125,6 @@
     </a>
 
     <div class="sidebar">
-    <nav class="mt-3">
-    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
     
 @php
   $userRole = strtolower(Auth::user()->role->nama_role ?? '');

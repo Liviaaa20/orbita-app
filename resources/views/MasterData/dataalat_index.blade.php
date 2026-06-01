@@ -1,5 +1,20 @@
 @extends('layouts.master')
 
+@push('styles')
+<style>
+    /* ── Fix gap DataTables ── */
+    #example1_wrapper .dataTables_scroll { overflow: visible; }
+    #example1 { border-collapse: collapse !important; }
+    #example1 thead tr th,
+    #example1 tbody tr td {
+        padding: 10px 12px !important;
+        vertical-align: middle !important;
+        white-space: nowrap;
+    }
+    #example1 thead tr th { background-color: #f8f9fa; }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     {{-- Notifikasi --}}
@@ -36,91 +51,91 @@
 
     {{-- Tabel Utama --}}
     <div class="card card-outline card-navy shadow-sm">
-        <div class="card-body table-responsive">
-            <table id="example1" class="table table-bordered table-hover align-middle">
-                <thead class="bg-light text-center">
-                    <tr>
-                        <th>No</th>
-                        <th>Foto</th>
-                        <th>Kategori</th>
-                        <th>Nama Alat</th>
-                        <th>No. Seri</th>
-                        <th>Jenis</th>
-                        <th>Lokasi</th>
-                        {{-- DATA TAMBAHAN --}}
-                        <th>Merk/Type</th>
-                        <th>Thn Pengadaan</th>
-                        <th>Rentang Ukur</th>
-                        <th>Resolusi</th>
-                        <th>Akurasi</th>
-                        {{-- STATUS & KONDISI --}}
-                        <th>Status</th>
-                        <th>Kondisi</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($alats as $key => $item)
-                    <tr>
-                        <td class="text-center">{{ $key + 1 }}</td>
-                        <td class="text-center">
-                            @if($item->foto_alat)
-                                <img src="{{ asset('assets/img/alat/'.$item->foto_alat) }}" width="50" height="50" style="object-fit:cover" class="img-thumbnail shadow-sm">
-                            @else
-                                <div class="bg-light border rounded mx-auto d-flex align-items-center justify-content-center" style="width:50px; height:50px;">
-                                    <i class="fas fa-camera text-muted"></i>
-                                </div>
-                            @endif
-                        </td>
-                        <td>
-                            <span class="badge badge-info">
-                                {{ $item->subKategori->kategori->nama_kategori ?? '-' }}
-                            </span>
-                        </td>
-                        <td class="text-navy font-weight-bold">{{ $item->nama_alat }}</td>
-                        <td><code>{{ $item->nomor_seri }}</code></td>
-                        <td>{{ $item->jenis }}</td>
-                        <td>{{ $item->lokasi }}</td>
-                        {{-- DATA TAMBAHAN --}}
-                        <td>{{ $item->merk_type ?? '-' }}</td>
-                        <td class="text-center">{{ $item->tahun_pengadaan ?? '-' }}</td>
-                        <td>{{ $item->rentang_ukur ?? '-' }}</td>
-                        <td>{{ $item->resolusi ?? '-' }}</td>
-                        <td>{{ $item->akurasi ?? '-' }}</td>
-                        <td class="text-center">
-                            <span class="badge {{ in_array($item->status, ['Aktif', 'Operasional']) ? 'badge-success' : 'badge-danger' }} px-2 py-1">
-                                {{ $item->status }}
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <span class="font-weight-bold text-sm 
-                                @if($item->kondisi == 'Baik') text-success 
-                                @elseif($item->kondisi == 'Rusak Ringan') text-warning 
-                                @elseif($item->kondisi == 'Rusak Berat') text-danger 
-                                @endif">
-                                ● {{ $item->kondisi }}
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalViewAlat{{ $item->id }}" title="Detail">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAlat{{ $item->id }}" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus alat {{ $item->nama_alat }}?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
-                                        <i class="fas fa-trash"></i>
+        {{-- Wrapper overflow manual — TANPA table-responsive bawaan Bootstrap --}}
+        <div class="card-body p-0">
+            <div style="overflow-x: auto; padding: 1rem;">
+                <table id="example1" class="table table-bordered table-hover mb-0" style="width:100%">
+                    <thead class="bg-light text-center">
+                        <tr>
+                            <th>No</th>
+                            <th>Foto</th>
+                            <th>Kategori</th>
+                            <th>Nama Alat</th>
+                            <th>No. Seri</th>
+                            <th>Jenis</th>
+                            <th>Lokasi</th>
+                            <th>Merk/Type</th>
+                            <th>Thn Pengadaan</th>
+                            <th>Rentang Ukur</th>
+                            <th>Resolusi</th>
+                            <th>Akurasi</th>
+                            <th>Status</th>
+                            <th>Kondisi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($alats as $key => $item)
+                        <tr>
+                            <td class="text-center">{{ $key + 1 }}</td>
+                            <td class="text-center">
+                                @if($item->foto_alat)
+                                    <img src="{{ asset('assets/img/alat/'.$item->foto_alat) }}" width="50" height="50" style="object-fit:cover" class="img-thumbnail shadow-sm">
+                                @else
+                                    <div class="bg-light border rounded mx-auto d-flex align-items-center justify-content-center" style="width:50px; height:50px;">
+                                        <i class="fas fa-camera text-muted"></i>
+                                    </div>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge badge-info">
+                                    {{ $item->subKategori->kategori->nama_kategori ?? '-' }}
+                                </span>
+                            </td>
+                            <td class="text-navy font-weight-bold">{{ $item->nama_alat }}</td>
+                            <td><code>{{ $item->nomor_seri }}</code></td>
+                            <td>{{ $item->jenis }}</td>
+                            <td>{{ $item->lokasi }}</td>
+                            <td>{{ $item->merk_type ?? '-' }}</td>
+                            <td class="text-center">{{ $item->tahun_pengadaan ?? '-' }}</td>
+                            <td>{{ $item->rentang_ukur ?? '-' }}</td>
+                            <td>{{ $item->resolusi ?? '-' }}</td>
+                            <td>{{ $item->akurasi ?? '-' }}</td>
+                            <td class="text-center">
+                                <span class="badge {{ in_array($item->status, ['Aktif', 'Operasional']) ? 'badge-success' : 'badge-danger' }} px-2 py-1">
+                                    {{ $item->status }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="font-weight-bold text-sm 
+                                    @if($item->kondisi == 'Baik') text-success 
+                                    @elseif($item->kondisi == 'Rusak Ringan') text-warning 
+                                    @elseif($item->kondisi == 'Rusak Berat') text-danger 
+                                    @endif">
+                                    ● {{ $item->kondisi }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalViewAlat{{ $item->id }}" title="Detail">
+                                        <i class="fas fa-eye"></i>
                                     </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                    <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAlat{{ $item->id }}" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus alat {{ $item->nama_alat }}?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -300,7 +315,6 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="font-weight-bold">Nama Alat</label>
-                                {{-- Hapus ID, gunakan Class agar unik di setiap loop --}}
                                 <input type="text" name="nama_alat" class="form-control nama-alat-input" value="{{ $item->nama_alat }}" required readonly>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -349,12 +363,12 @@
 @push('scripts')
 <script>
     $(document).ready(function () {
-        // 1. Inisialisasi DataTable
+        // 1. Inisialisasi DataTable — TANPA scrollX, pakai overflow manual di wrapper
         if (!$.fn.DataTable.isDataTable('#example1')) {
             var table = $('#example1').DataTable({
-                "responsive": false, 
-                "scrollX": true,
-                "lengthChange": false, 
+                "responsive": false,
+                "scrollX": false,       // ← Dimatikan, overflow ditangani wrapper div
+                "lengthChange": false,
                 "autoWidth": false,
                 "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"],
                 "language": {
@@ -368,42 +382,31 @@
         }
 
         // 2. Logika Dependent Dropdown (TAMBAH & EDIT)
-        // Gunakan selector class agar mencakup modal tambah dan semua modal edit
         $(document).on('change', '#select_kategori_utama, .kategori-edit', function() {
             var id = $(this).val();
-            var container = $(this).closest('.modal-body'); // Cari container modal terkait
-            var dropSub = container.find('select[name="sub_kategori_id"]'); // Cari dropdown sub di modal itu
-            var inputNama = container.find('input[name="nama_alat"]'); // Cari input nama di modal itu
+            var container = $(this).closest('.modal-body');
+            var dropSub = container.find('select[name="sub_kategori_id"]');
 
             if (id) {
                 dropSub.empty().append('<option value="">Memuat...</option>');
                 $.get("{{ url('get-sub-kategori') }}/" + id, function(res) {
                     dropSub.empty().append('<option value="">-- Pilih Sub Kategori --</option>');
-                    $.each(res, function(k, v) { 
-                        dropSub.append('<option value="'+v.id+'">'+v.nama_sub_kategori+'</option>'); 
+                    $.each(res, function(k, v) {
+                        dropSub.append('<option value="'+v.id+'">'+v.nama_sub_kategori+'</option>');
                     });
                 });
             }
         });
 
-// 3. Nama Alat Otomatis (TAMBAH & EDIT)
-$(document).on('change', '#sub_kategori_id, [id^="sub_kategori_edit_"]', function() {
-    // Ambil teks dari sub kategori yang dipilih
-    var selectedText = $(this).find('option:selected').text();
-    
-    // Cari container modal body tempat dropdown ini berada
-    var container = $(this).closest('.modal-body');
-    
-    // Validasi agar tidak mengisi teks placeholder
-    if ($(this).val() !== "" && selectedText !== "-- Pilih Sub Kategori --" && selectedText !== "Memuat...") {
-        
-        // Cari input nama_alat di dalam container ini saja
-        // Kita gunakan selector name agar lebih aman dari konflik ID
-        container.find('input[name="nama_alat"]').val(selectedText);
-        
-        console.log("Mengisi nama alat: " + selectedText); // Untuk debug di console
-    }
-});
+        // 3. Nama Alat Otomatis (TAMBAH & EDIT)
+        $(document).on('change', '#sub_kategori_id, [id^="sub_kategori_edit_"]', function() {
+            var selectedText = $(this).find('option:selected').text();
+            var container = $(this).closest('.modal-body');
+
+            if ($(this).val() !== "" && selectedText !== "-- Pilih Sub Kategori --" && selectedText !== "Memuat...") {
+                container.find('input[name="nama_alat"]').val(selectedText);
+            }
+        });
 
         // 4. Custom File Input (Foto)
         $(document).on('change', '.custom-file-input', function() {

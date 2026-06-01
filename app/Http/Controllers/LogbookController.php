@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Logbook;
 use App\Models\Pengecekan;
 use App\Models\Alat;
-use App\Models\SubKategori;
+use App\Models\Kategori;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -14,7 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class LogbookController extends Controller
 {
     // ============================================================
-    // HELPER: Cek role user yang sedang login
+    // HELPER ROLE
     // ============================================================
     private function getRole(): string
     {
@@ -41,12 +41,16 @@ class LogbookController extends Controller
     // ============================================================
     public function index(Request $request)
     {
-        $subKategoris     = SubKategori::with('kategori')->orderBy('nama_sub_kategori')->get();
+        // Dropdown opsi filter
+        $kategoris        = Kategori::orderBy('nama_kategori')->get();
         $opsiJenisLogbook = Logbook::pluck('jenis_logbook')->unique()->filter()->values();
         $opsiJenisAlat    = Logbook::pluck('jenis_alat')->unique()->filter()->values();
-        $opsiLokasi       = Logbook::pluck('lokasi_tempat')->unique()->filter()->values();
 
-        $query = Logbook::with(['subKategori', 'approvedKanitOleh', 'approvedKoordinatorOleh']);
+        $query = Logbook::with([
+            'kategori',
+            'approvedKanitOleh',
+            'approvedKoordinatorOleh',
+        ]);
 
         if ($request->filled('jenis_logbook') && $request->jenis_logbook !== 'Semua Logbook') {
             $query->where('jenis_logbook', $request->jenis_logbook);
@@ -54,8 +58,8 @@ class LogbookController extends Controller
         if ($request->filled('jenis_alat') && $request->jenis_alat !== 'Semua Logbook') {
             $query->where('jenis_alat', $request->jenis_alat);
         }
-        if ($request->filled('lokasi') && $request->lokasi !== 'Semua Lokasi') {
-            $query->where('lokasi_tempat', $request->lokasi);
+        if ($request->filled('kategori_id')) {
+            $query->where('kategori_id', $request->kategori_id);
         }
         if ($request->filled('search')) {
             $query->where('jenis_logbook', 'like', '%' . $request->search . '%');
@@ -68,31 +72,32 @@ class LogbookController extends Controller
 
         return view('logbook.index', compact(
             'logbooks',
-            'subKategoris',
+            'kategoris',
             'opsiJenisLogbook',
-            'opsiJenisAlat',
-            'opsiLokasi'
+            'opsiJenisAlat'
         ));
     }
 
     // ============================================================
-    // SHOW
+    // SHOW — tarik data dari pengecekans otomatis
     // ============================================================
     public function show(Request $request, $id)
     {
         $logbook = Logbook::with([
-            'subKategori',
+            'kategori',
             'approvedKanitOleh',
             'approvedKoordinatorOleh',
         ])->findOrFail($id);
 
+        // Ambil semua alat berdasarkan kategori_id
         $alats = collect();
-        if ($logbook->sub_kategori_id) {
-            $alats = Alat::where('sub_kategori_id', $logbook->sub_kategori_id)
-                         ->orderBy('nama_alat')
-                         ->get();
+        if ($logbook->kategori_id) {
+            $alats = Alat::whereHas('subKategori', function ($q) use ($logbook) {
+                $q->where('kategori_id', $logbook->kategori_id);
+            })->orderBy('nama_alat')->get();
         }
 
+        // Filter bulan
         $bulanParam  = $request->get('bulan', now()->format('Y-m'));
         $bulanCarbon = Carbon::createFromFormat('Y-m', $bulanParam);
         $awalBulan   = $bulanCarbon->copy()->startOfMonth();
@@ -101,11 +106,14 @@ class LogbookController extends Controller
 
         $alatIds = $alats->pluck('id')->toArray();
 
+        // Ambil pengecekan — prioritas shift Pagi dulu
         $semuaPengecekan = Pengecekan::with(['alat', 'user'])
             ->whereIn('alat_id', $alatIds)
             ->whereBetween('tanggal', [$awalBulan, $akhirBulan])
+            ->orderByRaw("FIELD(waktu, 'Pagi', 'Siang', 'Malam')")
             ->get();
 
+        // Susun data per hari
         $dataHarian       = [];
         $keteranganHarian = [];
         $teknisiHarian    = [];
@@ -120,19 +128,22 @@ class LogbookController extends Controller
             $hari   = (int) Carbon::parse($cek->tanggal)->format('j');
             $alatId = $cek->alat_id;
 
-            if (isset($dataHarian[$hari])) {
+            // Tidak overwrite — ambil data shift pertama saja
+            if (isset($dataHarian[$hari]) && !isset($dataHarian[$hari][$alatId])) {
                 $dataHarian[$hari][$alatId] = $cek->kondisi_akhir;
             }
-            if (!empty($cek->catatan)) {
+            if (!empty($cek->catatan) && empty($keteranganHarian[$hari])) {
                 $keteranganHarian[$hari] = $cek->catatan;
             }
-            if ($cek->user) {
+            if ($cek->user && empty($teknisiHarian[$hari])) {
                 $teknisiHarian[$hari] = $cek->user->name;
             }
         }
 
         $jumlahTerisi = collect($dataHarian)->filter(fn($d) => !empty($d))->count();
+        $persenTerisi = $jumlahHari > 0 ? round(($jumlahTerisi / $jumlahHari) * 100) : 0;
 
+        // List bulan untuk dropdown filter (12 bulan ke belakang)
         $bulanList = [];
         for ($i = 0; $i < 12; $i++) {
             $bln = now()->copy()->subMonths($i);
@@ -142,6 +153,10 @@ class LogbookController extends Controller
             ];
         }
 
+        $isAdmin       = $this->isAdmin();
+        $isKanit       = $this->isKanit();
+        $isKoordinator = $this->isKoordinator();
+
         return view('logbook.show', compact(
             'logbook',
             'alats',
@@ -149,10 +164,14 @@ class LogbookController extends Controller
             'keteranganHarian',
             'teknisiHarian',
             'jumlahHari',
+            'jumlahTerisi',
+            'persenTerisi',
             'bulanParam',
             'bulanCarbon',
-            'jumlahTerisi',
-            'bulanList'
+            'bulanList',
+            'isAdmin',
+            'isKanit',
+            'isKoordinator'
         ));
     }
 
@@ -162,7 +181,7 @@ class LogbookController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'sub_kategori_id'  => 'required|exists:sub_kategoris,id',
+            'kategori_id'      => 'required|exists:kategoris,id',
             'jenis_logbook'    => 'required|string|max:255',
             'jenis_alat'       => 'required|string|max:255',
             'lokasi_tempat'    => 'required|string|max:255',
@@ -170,7 +189,7 @@ class LogbookController extends Controller
         ]);
 
         Logbook::create([
-            'sub_kategori_id'     => $request->sub_kategori_id,
+            'kategori_id'         => $request->kategori_id,
             'jenis_logbook'       => $request->jenis_logbook,
             'jenis_alat'          => $request->jenis_alat,
             'lokasi_tempat'       => $request->lokasi_tempat,
@@ -190,7 +209,7 @@ class LogbookController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'sub_kategori_id'  => 'required|exists:sub_kategoris,id',
+            'kategori_id'      => 'required|exists:kategoris,id',
             'jenis_logbook'    => 'required|string|max:255',
             'jenis_alat'       => 'required|string|max:255',
             'lokasi_tempat'    => 'required|string|max:255',
@@ -205,7 +224,7 @@ class LogbookController extends Controller
         }
 
         $logbook->update([
-            'sub_kategori_id'     => $request->sub_kategori_id,
+            'kategori_id'         => $request->kategori_id,
             'jenis_logbook'       => $request->jenis_logbook,
             'jenis_alat'          => $request->jenis_alat,
             'lokasi_tempat'       => $request->lokasi_tempat,
@@ -230,7 +249,7 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // SUBMIT — Admin ajukan ke Kanit
+    // SUBMIT → pending_kanit
     // ============================================================
     public function submit($id)
     {
@@ -241,7 +260,10 @@ class LogbookController extends Controller
                 ->with('error', 'Logbook ini tidak dapat diajukan saat ini.');
         }
 
-        $logbook->update(['status' => 'pending_kanit']);
+        $logbook->update([
+            'status'              => 'pending_kanit',
+            'terakhir_diperbarui' => now(),
+        ]);
 
         return redirect()->route('logbook.index')
             ->with('success', 'Logbook berhasil diajukan ke Kepala Unit!');
@@ -263,7 +285,6 @@ class LogbookController extends Controller
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kanit.');
         }
 
-        // Set approved_kanit dulu, lalu naikkan ke pending_koordinator dalam satu update
         $logbook->update([
             'status'            => 'pending_koordinator',
             'approved_kanit_by' => Auth::id(),
@@ -291,9 +312,7 @@ class LogbookController extends Controller
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kanit.');
         }
 
-        $request->validate([
-            'catatan_kanit' => 'required|string|max:500',
-        ]);
+        $request->validate(['catatan_kanit' => 'required|string|max:500']);
 
         $logbook->update([
             'status'            => 'rejected_kanit',
@@ -349,9 +368,7 @@ class LogbookController extends Controller
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Koordinator.');
         }
 
-        $request->validate([
-            'catatan_koordinator' => 'required|string|max:500',
-        ]);
+        $request->validate(['catatan_koordinator' => 'required|string|max:500']);
 
         $logbook->update([
             'status'                  => 'rejected_koordinator',
@@ -365,29 +382,23 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // DOWNLOAD PDF
-    // Hanya tersedia jika status === 'approved_final'
+    // DOWNLOAD PDF — hanya approved_final
     // ============================================================
     public function downloadPdf(Request $request, $id)
     {
         $logbook = Logbook::with([
-            'subKategori.kategori',
+            'kategori',
             'approvedKanitOleh',
             'approvedKoordinatorOleh',
         ])->findOrFail($id);
 
-        // Guard: hanya approved_final yang boleh download
         if (!$logbook->bisaDownload()) {
-            return redirect()
-                ->route('logbook.show', $logbook->id)
+            return redirect()->route('logbook.show', $logbook->id)
                 ->with('error', 'PDF hanya tersedia untuk logbook yang sudah disetujui final.');
         }
 
-        // ── Tentukan bulan yang akan dicetak ──────────────────────────
-        // Prioritas: query string ?bulan=YYYY-MM
-        // Fallback : bulan pertama dari periode_tersedia
+        // Tentukan bulan
         $bulanParam = $request->get('bulan');
-
         if ($bulanParam) {
             try {
                 $bulanCarbon = Carbon::createFromFormat('Y-m', $bulanParam)->startOfMonth();
@@ -407,20 +418,20 @@ class LogbookController extends Controller
         $awalBulan  = $bulanCarbon->copy()->startOfMonth();
         $akhirBulan = $bulanCarbon->copy()->endOfMonth();
 
-        // ── Alat berdasarkan sub_kategori logbook ─────────────────────
+        // Alat dari kategori
         $alats = collect();
-        if ($logbook->sub_kategori_id) {
-            $alats = Alat::where('sub_kategori_id', $logbook->sub_kategori_id)
-                ->orderBy('nama_alat')
-                ->get();
+        if ($logbook->kategori_id) {
+            $alats = Alat::whereHas('subKategori', function ($q) use ($logbook) {
+                $q->where('kategori_id', $logbook->kategori_id);
+            })->orderBy('nama_alat')->get();
         }
 
-        // ── Data pengecekan harian ────────────────────────────────────
         $alatIds = $alats->pluck('id')->toArray();
 
         $semuaPengecekan = Pengecekan::with(['alat', 'user'])
             ->whereIn('alat_id', $alatIds)
             ->whereBetween('tanggal', [$awalBulan, $akhirBulan])
+            ->orderByRaw("FIELD(waktu, 'Pagi', 'Siang', 'Malam')")
             ->get();
 
         $dataHarian       = [];
@@ -437,7 +448,7 @@ class LogbookController extends Controller
             $hari   = (int) Carbon::parse($cek->tanggal)->format('j');
             $alatId = $cek->alat_id;
 
-            if (isset($dataHarian[$hari])) {
+            if (isset($dataHarian[$hari]) && !isset($dataHarian[$hari][$alatId])) {
                 $dataHarian[$hari][$alatId] = $cek->kondisi_akhir;
             }
             if (!empty($cek->catatan) && empty($keteranganHarian[$hari])) {
@@ -450,11 +461,6 @@ class LogbookController extends Controller
 
         $jumlahTerisi = collect($dataHarian)->filter(fn($d) => !empty($d))->count();
 
-        // ── Path absolut gambar paraf (DomPDF wajib public_path) ─────
-        $parafKanitPath = public_path('assets/dist/img/TTD/parafKanit.png');
-        $parafKoordPath = public_path('assets/dist/img/TTD/parafKoordinator.png');
-
-        // ── Generate PDF ──────────────────────────────────────────────
         $pdf = Pdf::loadView('logbook.pdf_logbook', compact(
             'logbook',
             'bulanCarbon',
@@ -464,9 +470,7 @@ class LogbookController extends Controller
             'jumlahTerisi',
             'dataHarian',
             'keteranganHarian',
-            'teknisiHarian',
-            'parafKanitPath',
-            'parafKoordPath'
+            'teknisiHarian'
         ))
         ->setPaper('a4', 'landscape')
         ->setOptions([
@@ -476,7 +480,6 @@ class LogbookController extends Controller
             'dpi'                  => 96,
         ]);
 
-        // ── Nama file PDF ─────────────────────────────────────────────
         $namaFile = sprintf(
             'Logbook_%s_%s.pdf',
             str_replace([' ', '/'], '_', strtoupper($logbook->jenis_logbook)),

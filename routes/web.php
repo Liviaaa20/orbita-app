@@ -46,33 +46,59 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('kategori', KategoriController::class);
     Route::resource('sub-kategori', SubKategoriController::class);
 // Master Data
-Route::get('/get-sub-kategori/{kategori_id}', [AlatController::class, 'getSubKategori'])->name('get-sub-kategori');
-Route::resource('data-alat', AlatController::class);    // Pengecekan
+    Route::get('/get-sub-kategori/{kategori_id}', [AlatController::class, 'getSubKategori'])->name('get-sub-kategori');
+    Route::resource('data-alat', AlatController::class);    // Pengecekan
     Route::get('/pengecekan', [PengecekanController::class, 'index'])->name('pengecekan.index');
     Route::post('/pengecekan/store', [PengecekanController::class, 'store'])->name('pengecekan.store');
     Route::get('/pengecekan', [MaintenanceController::class, 'showPengecekan'])->name('pengecekan.index');
 
-/// --- MAINTENANCE (HARIAN & MINGGUAN) ---
+// /// --- MAINTENANCE (HARIAN & MINGGUAN) ---
+// Route::prefix('maintenance')->name('maintenance.')->group(function () {
+//     // Pastikan mengarah ke showPengecekan
+//     Route::get('/harian', [MaintenanceController::class, 'indexHarian'])->name('harian');
+//     Route::get('/mingguan', [MaintenanceController::class, 'indexMingguan'])->name('mingguan');
+    
+//     // Halaman pilih lokasi
+//     Route::get('/form-pengecekan', [MaintenanceController::class, 'showPengecekan'])->name('show-pengecekan');
+//     Route::get('/form-pengecekan-alt', [MaintenanceController::class, 'showPengecekan'])->name('showPengecekan');
+
+//     // TAHAP 2: Simpan Inisiasi (Plotting)
+//     Route::post('/store-inisiasi', [MaintenanceController::class, 'storeInisiasi'])->name('store-inisiasi');
+    
+//     // TAHAP 3: Form Checklist Fisik
+//     Route::get('/form-master', [MaintenanceController::class, 'formMaster'])->name('form-master');
+    
+//     // TAHAP 4: Simpan Hasil Akhir
+//     Route::post('/store-hasil', [MaintenanceController::class, 'storeHasilFisik'])->name('store-hasil');
+//     Route::post('/store', [MaintenanceController::class, 'storeInisiasi'])->name('store');
+// });
+
 Route::prefix('maintenance')->name('maintenance.')->group(function () {
-    // Pastikan mengarah ke showPengecekan
-    Route::get('/harian', [MaintenanceController::class, 'indexHarian'])->name('harian');
+ 
+    // ---- INDEX (halaman riwayat) ----
+    Route::get('/harian',   [MaintenanceController::class, 'indexHarian'])  ->name('harian');
     Route::get('/mingguan', [MaintenanceController::class, 'indexMingguan'])->name('mingguan');
-    
-    // Halaman pilih lokasi
-    Route::get('/form-pengecekan', [MaintenanceController::class, 'showPengecekan'])->name('show-pengecekan');
-    Route::get('/form-pengecekan-alt', [MaintenanceController::class, 'showPengecekan'])->name('showPengecekan');
-
-    // TAHAP 2: Simpan Inisiasi (Plotting)
-    Route::post('/store-inisiasi', [MaintenanceController::class, 'storeInisiasi'])->name('store-inisiasi');
-    
-    // TAHAP 3: Form Checklist Fisik
-    Route::get('/form-master', [MaintenanceController::class, 'formMaster'])->name('form-master');
-    
-    // TAHAP 4: Simpan Hasil Akhir
-    Route::post('/store-hasil', [MaintenanceController::class, 'storeHasilFisik'])->name('store-hasil');
-    Route::post('/store', [MaintenanceController::class, 'storeInisiasi'])->name('store');
+ 
+    // ---- FORM INPUT BARU ----
+    // (view lama harian_index.blade.php sekarang dipanggil sebagai harian_create)
+    Route::get('/harian/baru',   [MaintenanceController::class, 'createHarian'])  ->name('harian.create');
+    Route::get('/mingguan/baru', [MaintenanceController::class, 'createMingguan'])->name('mingguan.create');
+ 
+    // ---- SHOW PENGECEKAN (pilih lokasi) ----
+    Route::get('/pengecekan',  [MaintenanceController::class, 'showPengecekan'])->name('show-pengecekan');
+ 
+    // ---- STORE INISIASI ----
+    Route::post('/inisiasi',   [MaintenanceController::class, 'storeInisiasi']) ->name('store-inisiasi');
+ 
+    // ---- FORM MASTER (isi hasil per alat) ----
+    Route::get('/form-master', [MaintenanceController::class, 'formMaster'])   ->name('form-master');
+ 
+    // ---- STORE HASIL ----
+    Route::post('/store-hasil',[MaintenanceController::class, 'storeHasilFisik'])->name('store-hasil');
+ 
+    // ---- DETAIL SESI ----
+    Route::get('/detail',      [MaintenanceController::class, 'detailSesi'])   ->name('detail');
 });
-
     // Group Route untuk Permintaan Perbaikan
     Route::prefix('perbaikan')->name('perbaikan.')->group(function () {
     // Halaman Utama Tabel Perbaikan
@@ -116,6 +142,7 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/histori/{id}/riwayat', [HistoriOperasionalController::class, 'downloadRiwayat'])->name('histori.riwayat');
 
     Route::prefix('logbook')->name('logbook.')->group(function () {
+    Route::resource('logbook', LogbookController::class);    
 
         // Index & Show
         Route::get('/',          [LogbookController::class, 'index'])->name('index');

@@ -14,8 +14,6 @@ class Kategori extends Model
     protected $fillable = [
         'kode_kategori',
         'nama_kategori',
-        'tahun_pengadaan', // Pastikan ini ada di migration
-        'merk',
         'jenis'
     ];
 

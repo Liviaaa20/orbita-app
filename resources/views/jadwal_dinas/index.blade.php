@@ -20,16 +20,25 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-8 text-right mt-3 mt-md-0">
-                        <button type="button" class="btn btn-light border font-weight-bold text-dark px-3 shadow-sm rounded-lg" data-toggle="modal" data-target="#modalUnduhJadwal">
-                            <i class="fas fa-download mr-1"></i> Unduh Jadwal
-                        </button>
-                    </div>
+<div class="col-md-8 text-right mt-3 mt-md-0">
+    @if($bisaInput)
+        <a href="{{ route('jadwal_dinas.create') }}"
+           class="btn btn-primary font-weight-bold px-3 shadow-sm rounded-lg mr-2"
+           style="background-color:#003366; border-color:#003366;">
+            <i class="fas fa-plus mr-1"></i> Input Jadwal
+        </a>
+    @endif
+    <button type="button"
+            class="btn btn-light border font-weight-bold text-dark px-3 shadow-sm rounded-lg"
+            data-toggle="modal" data-target="#modalUnduhJadwal">
+        <i class="fas fa-download mr-1"></i> Unduh Jadwal
+    </button>
+</div>
                 </div>
             </form>
         </div>
     </div>
-
+    
     {{-- Konten Utama dengan Sistem Tab Konten --}}
     <div class="card shadow-sm border-0 rounded-lg overflow-hidden mb-3">
         {{-- Header Sub-Menu: Navigasi Minggu/Bulan Menggunakan Nav-Pills Bootstrap --}}

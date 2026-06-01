@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('logbooks', function (Blueprint $table) {
+            // Tambah sub_kategori_id setelah id
             $table->foreignId('sub_kategori_id')
                   ->nullable()
                   ->after('id')
