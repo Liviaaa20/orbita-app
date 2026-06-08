@@ -4,7 +4,7 @@
 @php
     $userRole      = strtolower(Auth::user()->role->nama_role ?? '');
     $isAdmin       = $userRole === 'admin';
-    $isKanit       = in_array($userRole, ['kepala unit', 'kepala_unit', 'kanit']);
+    $isKepalaKelompok = in_array($userRole, ['kepala kelompok', 'kepala_kelompok', 'kapok']);
     $isKoordinator = $userRole === 'koordinator';
 @endphp
 

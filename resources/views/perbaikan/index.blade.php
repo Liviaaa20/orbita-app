@@ -97,7 +97,7 @@
                 </h3>
 
                 @php
-                    $roleBisaInput = ['teknisi', 'kepala lapangan', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
+                    $roleBisaInput = ['kepala lapangan', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
                     $userRole = strtolower(Auth::user()->role->nama_role ?? '');
                 @endphp
 
@@ -237,7 +237,7 @@
                                     {{-- VALIDASI --}}
                                     <td class="text-center" style="min-width:100px;">
 
-                                        @if(Auth::user()->role && Auth::user()->role->nama_role == 'admin')
+                                        @if(Auth::user()->role && (Auth::user()->role->nama_role == 'admin' || Auth::user()->role->nama_role == 'teknisi'))
 
                                             @if(!$p->tgl_diterima)
 
@@ -293,7 +293,7 @@
                                     {{-- STATUS --}}
                                     <td class="text-center col-status-fixed">
 
-                                        @if(Auth::user()->role && Auth::user()->role->nama_role == 'admin')
+                                        @if(Auth::user()->role && (Auth::user()->role->nama_role == 'admin' || Auth::user()->role->nama_role == 'teknisi'))
 
                                             <form action="{{ route('perbaikan.update', $p->id) }}"
                                                   method="POST">
@@ -345,7 +345,7 @@
                                                 <i class="fas fa-download text-primary"></i>
                                             </a>
 
-                                            @if(Auth::user()->role && Auth::user()->role->nama_role == 'admin')
+                                            @if(Auth::user()->role && in_array(Auth::user()->role->nama_role, ['admin', 'teknisi']))
 
                                                 <button type="button"
                                                         class="btn btn-sm btn-light border shadow-sm"

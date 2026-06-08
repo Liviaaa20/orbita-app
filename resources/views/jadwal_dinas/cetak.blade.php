@@ -437,7 +437,7 @@
         <div class="col-4 text-center">
 
             <p class="mb-5">
-                Kepala Unit Operasional,
+                Kepala kelompok,
             </p>
 
             <br><br>

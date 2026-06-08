@@ -59,11 +59,11 @@
         <div class="tab-content" id="pills-tabContent">
             
             @if($jadwals->isEmpty())
-                {{-- Tampilan jika Kepala Unit BELUM mengisi jadwal sama sekali --}}
+                {{-- Tampilan jika Kepala kelompok belum mengisi jadwal sama sekali --}}
                 <div class="text-center py-5 bg-white">
                     <i class="fas fa-calendar-times text-muted mb-3" style="font-size: 3rem;"></i>
                     <h5 class="font-weight-bold text-dark">Belum Ada Jadwal Dinas</h5>
-                    <p class="text-muted small">Kepala Unit belum merilis atau mengisi penugasan dinas untuk periode ini.</p>
+                    <p class="text-muted small">Kepala kelompok belum merilis atau mengisi penugasan dinas untuk periode ini.</p>
                 </div>
             @else
                 @php

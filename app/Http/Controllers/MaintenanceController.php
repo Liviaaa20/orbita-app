@@ -13,6 +13,13 @@ use Carbon\Carbon;
 
 class MaintenanceController extends Controller
 {
+       private function checkMaintenanceAccess()
+   {
+    if (!auth()->user()->canManageMaintenance()) {
+        abort(403, 'Akses ditolak');
+    }
+    } 
+
     // =========================================================
     //  INDEX HARIAN  →  menampilkan riwayat sesi maintenance
     // =========================================================
@@ -114,11 +121,13 @@ class MaintenanceController extends Controller
     // =========================================================
     public function createHarian()
     {
+        $this->checkMaintenanceAccess();
         return view('maintenance.harian_create');   // file lama: harian_index.blade.php → rename jadi harian_create
     }
 
     public function createMingguan()
     {
+        $this->checkMaintenanceAccess();
         return view('maintenance.mingguan_create'); // file lama: mingguan_index.blade.php → rename jadi mingguan_create
     }
 
@@ -127,6 +136,7 @@ class MaintenanceController extends Controller
     // =========================================================
     public function showPengecekan(Request $request)
     {
+        $this->checkMaintenanceAccess();
         $type    = $request->type ?? 'harian';
         $tanggal = $request->tanggal ?? date('Y-m-d');
         $waktu   = $request->waktu;
@@ -156,6 +166,7 @@ class MaintenanceController extends Controller
     // =========================================================
     public function storeInisiasi(Request $request)
     {
+        $this->checkMaintenanceAccess();
         $request->validate([
             'tanggal' => 'required|date',
             'waktu'   => 'required',
@@ -205,6 +216,7 @@ class MaintenanceController extends Controller
     // =========================================================
     public function formMaster(Request $request)
     {
+        $this->checkMaintenanceAccess();
         $tanggal    = $request->tanggal;
         $waktu      = $request->waktu;
         $type       = $request->type;
@@ -241,6 +253,7 @@ class MaintenanceController extends Controller
     // =========================================================
     public function storeHasilFisik(Request $request)
     {
+        $this->checkMaintenanceAccess();
         $request->validate([
             'tanggal' => 'required|date',
             'waktu'   => 'required',

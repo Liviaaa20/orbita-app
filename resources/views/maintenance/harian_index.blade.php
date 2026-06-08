@@ -9,11 +9,13 @@
             style="border-left: 5px solid #003366; padding-left: 15px; color: #003366;">
             Maintenance Harian
         </h3>
+        @if(auth()->user()->canManageMaintenance())
         <a href="{{ route('maintenance.harian.create') }}"
            class="btn btn-primary btn-sm px-4"
            style="background-color: #003366; border: none; border-radius: 8px;">
             <i class="fas fa-plus mr-1"></i> Pengecekan Baru
         </a>
+        @endif
     </div>
 
     {{-- ===== FLASH MESSAGE ===== --}}
@@ -56,10 +58,12 @@
                         <option value="selesai" {{ request('status') == 'selesai' ? 'selected' : '' }}>Selesai</option>
                     </select>
                 </div>
+                @if(auth()->user()->canManageMaintenance())
                 <button type="submit" class="btn btn-primary btn-sm mb-2 px-4"
                         style="background-color: #003366; border: none; border-radius: 8px;">
                     <i class="fas fa-filter mr-1"></i> Filter
                 </button>
+                @endif
                 <a href="{{ route('maintenance.harian') }}" class="btn btn-secondary btn-sm mb-2 px-3"
                    style="border-radius: 8px;">
                     <i class="fas fa-times mr-1"></i> Reset
@@ -173,7 +177,7 @@
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
                                     {{-- Tombol Lanjutkan (jika masih ada yang proses) --}}
-                                    @if($sesi->jumlah_proses > 0)
+                                    @if(auth()->user()->canManageMaintenance() && $sesi->jumlah_proses > 0)
                                         <a href="{{ route('maintenance.form-master', [
                                                 'tanggal' => $sesi->tanggal,
                                                 'waktu'   => $sesi->shift,

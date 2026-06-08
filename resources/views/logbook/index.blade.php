@@ -4,7 +4,7 @@
 @php
     $userRole      = strtolower(Auth::user()->role->nama_role ?? '');
     $isAdmin       = $userRole === 'admin';
-    $isKanit       = in_array($userRole, ['kepala unit', 'kepala_unit', 'kanit']);
+    $iskepalalapangan = in_array($userRole, ['kepalalapangan']);
     $isKoordinator = $userRole === 'koordinator';
 @endphp
 
@@ -81,7 +81,7 @@
                         <div class="ml-3">
                             <p class="mb-0 text-muted" style="font-size: 0.75rem;">Menunggu</p>
                             <h5 class="mb-0 font-weight-bold">
-                                {{ $logbooks->where('status', 'pending_kanit')->count() + $logbooks->where('status', 'pending_koordinator')->count() }}
+                                {{ $logbooks->where('status', 'pending_kepalalapangan')->count() + $logbooks->where('status', 'pending_koordinator')->count() }}
                             </h5>
                         </div>
                     </div>
@@ -109,7 +109,7 @@
                         <div class="ml-3">
                             <p class="mb-0 text-muted" style="font-size: 0.75rem;">Ditolak</p>
                             <h5 class="mb-0 font-weight-bold">
-                                {{ $logbooks->whereIn('status', ['rejected_kanit', 'rejected_koordinator'])->count() }}
+                                {{ $logbooks->whereIn('status', ['rejected_kepalalapangan', 'rejected_koordinator'])->count() }}
                             </h5>
                         </div>
                     </div>
@@ -149,10 +149,10 @@
                         <select name="status" class="form-control" style="border-radius: 8px; height: 42px;" onchange="this.form.submit()">
                             <option value="">Semua Status</option>
                             <option value="draft"                {{ request('status') == 'draft'                ? 'selected' : '' }}>Draft</option>
-                            <option value="pending_kanit"        {{ request('status') == 'pending_kanit'        ? 'selected' : '' }}>Menunggu Kanit</option>
+                            <option value="pending_kepalalapangan"        {{ request('status') == 'pending_kepalalapangan'        ? 'selected' : '' }}>Menunggu kepalalapangan</option>
                             <option value="pending_koordinator"  {{ request('status') == 'pending_koordinator'  ? 'selected' : '' }}>Menunggu Koordinator</option>
                             <option value="approved_final"       {{ request('status') == 'approved_final'       ? 'selected' : '' }}>Disetujui Final</option>
-                            <option value="rejected_kanit"       {{ request('status') == 'rejected_kanit'       ? 'selected' : '' }}>Ditolak Kanit</option>
+                            <option value="rejected_kepalalapangan"       {{ request('status') == 'rejected_kepalalapangan'       ? 'selected' : '' }}>Ditolak kepalalapangan</option>
                             <option value="rejected_koordinator" {{ request('status') == 'rejected_koordinator' ? 'selected' : '' }}>Ditolak Koordinator</option>
                         </select>
                     </div>
@@ -231,14 +231,14 @@
                                 @switch($log->status)
                                     @case('draft')
                                         <span class="badge badge-secondary">Draft</span> @break
-                                    @case('pending_kanit')
-                                        <span class="badge badge-warning">Menunggu Kanit</span> @break
+                                    @case('pending_kepalalapangan')
+                                        <span class="badge badge-warning">Menunggu kepalalapangan</span> @break
                                     @case('pending_koordinator')
                                         <span class="badge badge-warning">Menunggu Koord</span> @break
                                     @case('approved_final')
                                         <span class="badge badge-success">Disetujui</span> @break
-                                    @case('rejected_kanit')
-                                        <span class="badge badge-danger">Ditolak Kanit</span> @break
+                                    @case('rejected_kepalalapangan')
+                                        <span class="badge badge-danger">Ditolak kepalalapangan</span> @break
                                     @case('rejected_koordinator')
                                         <span class="badge badge-danger">Ditolak Koord</span> @break
                                     @default
@@ -246,9 +246,9 @@
                                 @endswitch
                             </td>
                             <td class="py-3" style="font-size: 0.8rem;">
-                                @if($log->approved_kanit_by && $log->approvedKanitOleh)
+                                @if($log->approved_kepalalapangan_by && $log->approvedkepalalapanganOleh)
                                     <div class="text-success">
-                                        <i class="fas fa-check mr-1"></i>{{ $log->approvedKanitOleh->name }}
+                                        <i class="fas fa-check mr-1"></i>{{ $log->approvedkepalalapanganOleh->name }}
                                     </div>
                                 @endif
                                 @if($log->approved_koordinator_by && $log->approvedKoordinatorOleh)
@@ -256,7 +256,7 @@
                                         <i class="fas fa-check-double mr-1"></i>{{ $log->approvedKoordinatorOleh->name }}
                                     </div>
                                 @endif
-                                @if(empty($log->approved_kanit_by) && empty($log->approved_koordinator_by))
+                                @if(empty($log->approved_kepalalapangan_by) && empty($log->approved_koordinator_by))
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
@@ -300,15 +300,15 @@
                                         </button>
                                     @endif
 
-                                    @if($isKanit && $log->status == 'pending_kanit')
+                                    @if($iskepalalapangan && $log->status == 'pending_kepalalapangan')
                                         <button type="button" class="btn btn-sm btn-success" title="Setuju"
-                                                data-toggle="modal" data-target="#modalApproveKanit"
-                                                onclick="setModalId('modalApproveKanitForm', '{{ route('logbook.approve-kanit', $log->id) }}')">
+                                                data-toggle="modal" data-target="#modalApprovekepalalapangan"
+                                                onclick="setModalId('modalApprovekepalalapanganForm', '{{ route('logbook.approve-kepalalapangan', $log->id) }}')">
                                             <i class="fas fa-check"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-danger" title="Tolak"
-                                                data-toggle="modal" data-target="#modalRejectKanit"
-                                                onclick="setModalId('modalRejectKanitForm', '{{ route('logbook.reject-kanit', $log->id) }}')">
+                                                data-toggle="modal" data-target="#modalRejectkepalalapangan"
+                                                onclick="setModalId('modalRejectkepalalapanganForm', '{{ route('logbook.reject-kepalalapangan', $log->id) }}')">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     @endif
@@ -495,7 +495,7 @@
         </div>
     </div>
 </div>
-<!-- Modal Ajukan ke Kanit -->
+<!-- Modal Ajukan ke kepalalapangan -->
 <div class="modal fade" id="modalSubmitLogbook" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow">
@@ -527,7 +527,7 @@
                     </h6>
 
                     <p class="text-center text-muted mt-3 mb-0">
-                        Logbook akan dikirim ke <strong>Kepala Unit (Kanit)</strong>
+                        Logbook akan dikirim ke <strong>Kepala Unit (kepalalapangan)</strong>
                         untuk proses approval.
                     </p>
                 </div>

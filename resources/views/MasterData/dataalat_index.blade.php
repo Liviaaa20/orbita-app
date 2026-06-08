@@ -40,12 +40,14 @@
     {{-- Judul & Tombol Tambah --}}
     <div class="row mb-3 align-items-center">
         <div class="col-md-6">
-            <h1 class="m-0 text-navy font-weight-bold">Data Alat ORBITA</h1>
+            <h3 class="m-0 text-navy font-weight-bold">Data Alat ORBITA</h3>
         </div>
         <div class="col-md-6 text-right">
+            @if(auth()->user()->canManageMasterData())
             <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalTambahAlat">
                 <i class="fas fa-plus-circle mr-1"></i> Tambah Alat
             </button>
+            @endif
         </div>
     </div>
 
@@ -120,9 +122,12 @@
                                     <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalViewAlat{{ $item->id }}" title="Detail">
                                         <i class="fas fa-eye"></i>
                                     </button>
+                                    @if(auth()->user()->canManageMasterData())
                                     <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAlat{{ $item->id }}" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    @endif
+                                    @if(auth()->user()->canManageMasterData())
                                     <button type="button"
                                             class="btn btn-danger btn-sm"
                                             title="Hapus"
@@ -130,65 +135,68 @@
                                             data-target="#modalDeleteAlat{{ $item->id }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
                         <!-- Modal Delete Data Alat -->
+@if(auth()->user()->canManageMasterData())
 <div class="modal fade" id="modalDeleteAlat{{ $item->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST">
             @csrf
             @method('DELETE')
-
             <div class="modal-content border-0 shadow">
-
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title">
                         <i class="fas fa-trash-alt mr-2"></i>
                         Hapus Data Alat
                     </h5>
-
+                    @endif
+                    @if(auth()->user()->canManageMasterData())
                     <button type="button"
                             class="close text-white"
                             data-dismiss="modal">
                         <span>&times;</span>
                     </button>
+                    @endif
                 </div>
-
                 <div class="modal-body text-center">
-
+                @if(auth()->user()->canManageMasterData())
                     <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
-
                     <h5 class="font-weight-bold">
                         Yakin ingin menghapus alat ini?
                     </h5>
-
+                @endif
+                </div>
                     <div class="alert alert-light border text-left mt-3 mb-0">
-
+                        @if(auth()->user()->canManageMasterData())          
                         <p class="mb-2">
                             <strong>Kode Alat :</strong>
                             {{ $item->kode_alat }}
                         </p>
-
                         <p class="mb-2">
                             <strong>Nama Alat :</strong>
                             {{ $item->nama_alat }}
                         </p>
-
                         <p class="mb-2">
                             <strong>Kategori :</strong>
                             {{ $item->kategori->nama_kategori ?? '-' }}
                         </p>
-
                         @if(isset($item->subKategori))
                         <p class="mb-0">
                             <strong>Sub Kategori :</strong>
                             {{ $item->subKategori->nama_sub_kategori ?? '-' }}
                         </p>
                         @endif
-
                     </div>
-
                     <small class="text-muted d-block mt-3">
                         Data alat yang dihapus tidak dapat dikembalikan.
                     </small>
@@ -214,14 +222,7 @@
         </form>
     </div>
 </div>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
+@endforelse
 {{-- MODAL TAMBAH --}}
 <div class="modal fade" id="modalTambahAlat" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">

@@ -67,14 +67,16 @@
             <i class="fas fa-exclamation-triangle mr-2"></i>
             <strong>Sesi ini belum selesai.</strong> Masih ada alat yang belum diisi hasil pengecekannya.
         </div>
+        @if(auth()->user()->canManageMaintenance())
         <a href="{{ route('maintenance.form-master', [
                 'tanggal' => $tanggal,
                 'waktu'   => $shift,
                 'type'    => $type
             ]) }}"
-           class="btn btn-warning btn-sm px-4 ml-3" style="border-radius: 8px; white-space: nowrap;">
+        class="btn btn-warning btn-sm px-4 ml-3">
             <i class="fas fa-edit mr-1"></i> Lanjutkan Pengisian
         </a>
+        @endif
     </div>
     @endif
 

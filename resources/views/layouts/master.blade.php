@@ -98,7 +98,6 @@
           <i class="fas fa-user-circle fa-4x text-secondary mb-2"></i>
           <p>
             {{ Auth::user()->username ?? 'User' }}
-<!-- Mengambil kolom nama_role dari relasi role -->
 <small>Role: {{ Auth::user()->role->nama_role ?? 'Admin' }}</small>          </p>
         </li>
         <li class="user-footer d-flex justify-content-between">
@@ -133,10 +132,10 @@
 
     $isTeknisi = ($userRole == 'teknisi');
 
-    $isKepalaLapangan = in_array($userRole, [
-        'kepala lapangan',
-        'kepala_lapangan',
-        'kalap'
+    $isKepalaKelompok = in_array($userRole, [
+        'kepala kelompok',
+        'kepala_kelompok',
+        'kapok'
     ]);
 
     $isKoordinator = ($userRole == 'koordinator');
@@ -176,7 +175,7 @@
 {{-- ===================================================== --}}
 {{-- 2. MASTER USER (ADMIN) --}}
 {{-- ===================================================== --}}
-@if($isAdmin)
+@if($isTeknisi)
 <li class="nav-item {{ request()->is('role*') || request()->is('user*') ? 'menu-open' : '' }}">
 
     <a href="#"
@@ -211,9 +210,9 @@
 @endif
 
 {{-- ===================================================== --}}
-{{-- 3. MASTER DATA (ADMIN & TEKNISI) --}}
+{{-- 3. MASTER DATA (ADMIN, TEKNISI, KOORDINATOR & KEPALA KELOMPOK) --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaKelompok || $isKoordinator)
 
 <li class="nav-item {{ request()->is('kategori*')
     || request()->is('sub-kategori*')
@@ -262,6 +261,7 @@
             </a>
         </li>
 
+        @if($isAdmin || $isTeknisi)
         <li class="nav-item">
             <a href="{{ route('pengecekan.index', ['type' => 'harian']) }}"
                class="nav-link px-4 {{ request()->is('pengecekan*') ? 'active' : '' }}">
@@ -269,6 +269,7 @@
                 <p>Pengecekan</p>
             </a>
         </li>
+        @endif
 
     </ul>
 </li>
@@ -277,7 +278,7 @@
 {{-- ===================================================== --}}
 {{-- 4. MAINTENANCE --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaKelompok || $isKoordinator)
 <li class="nav-item {{ request()->is('maintenance*') ? 'menu-open' : '' }}">
 
     <a href="#"
@@ -317,7 +318,7 @@
 {{-- ===================================================== --}}
 {{-- 5. JADWAL DINAS --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaKelompok || $isKoordinator)
 
 <li class="nav-item {{ request()->is('jadwal-dinas*') ? 'menu-open' : '' }}">
 
@@ -344,8 +345,8 @@
             </a>
         </li>
 
-        {{-- Kanit & Koordinator --}}
-        @if($isAdmin || $isKepalaLapangan)
+        {{-- Kepala Kelompok & Koordinator --}}
+       @if($isAdmin || $isKepalaKelompok)
         <li class="nav-item">
             <a href="{{ route('jadwal_dinas.create') }}"
                class="nav-link px-4 {{ request()->is('jadwal-dinas/create') ? 'active' : '' }}">

@@ -15,11 +15,10 @@ class PerbaikanController extends Controller
     // ── Semua role yang boleh tambah permintaan (KECUALI admin) ──
     // Disesuaikan dengan nama role di database (case-sensitive!)
     protected $roleBisaInput = [
-        'teknisi',
         'Observer',
         'Tata Usaha',
         'Forecaster',
-        'Kepala Lapangan',
+        'Kepala Kelompok',
         'Koordinator',
     ];
 
@@ -90,7 +89,7 @@ class PerbaikanController extends Controller
 
     public function validasi(Request $request, $id)
     {
-        if (Auth::user()->role->nama_role !== 'admin') {
+        if (Auth::user()->role->nama_role !== 'admin' && Auth::user()->role->nama_role !== 'teknisi') {
             return abort(403);
         }
 
@@ -107,7 +106,7 @@ class PerbaikanController extends Controller
 
 public function update(Request $request, $id)
 {
-    if (Auth::user()->role->nama_role !== 'admin') {
+    if (Auth::user()->role->nama_role !== 'admin' && Auth::user()->role->nama_role !== 'teknisi') {
         return abort(403);
     }
 

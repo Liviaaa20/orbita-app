@@ -18,6 +18,7 @@
 
                     <div class="card shadow-sm border-0" style="border-radius: 12px;">
                         <div class="card-header bg-white py-3 border-bottom-0 text-center">
+
                             <h5 class="m-0 font-weight-bold text-dark">
                                 <i class="fas fa-plus-circle mr-2 text-primary"></i> Pengecekan Baru
                             </h5>

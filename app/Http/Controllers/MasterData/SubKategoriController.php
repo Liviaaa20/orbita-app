@@ -9,21 +9,26 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class SubKategoriController extends Controller
-{
+    {
+    private function checkMasterDataAccess()
+   {
+    if (!auth()->user()->canManageMasterData()) {
+        abort(403, 'Akses ditolak');
+    }
+    } 
     public function index()
     {
         $kategori = Kategori::all();
         $kategoriWithSub = Kategori::with('subKategoris')->get();
-        
-        // AMBIL DATA INI: Mendapatkan semua nama sub kategori untuk validasi di frontend
-        $existingSub = \App\Models\SubKategori::pluck('nama_sub_kategori')->toArray();
-    
-        // KIRIMKAN $existingSub ke view
-        return view('MasterData.subkategori_index', compact('kategori', 'kategoriWithSub', 'existingSub'));
+        return view('MasterData.subkategori_index', compact(
+            'kategoriWithSub',
+            'kategori'
+            ));
     }
 
     public function store(Request $request)
     {
+        $this->checkMasterDataAccess();
         $request->validate([
             'kategori_id' => 'required|exists:kategoris,id', // Tambahkan validasi exists agar aman
             'nama_sub_kategori' => 'required|array',
@@ -63,6 +68,7 @@ class SubKategoriController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->checkMasterDataAccess();
         $sub = SubKategori::findOrFail($id);
         $sub->update($request->all());
 
@@ -71,6 +77,7 @@ class SubKategoriController extends Controller
 
     public function destroy($id)
     {
+        $this->checkMasterDataAccess();
         SubKategori::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Sub Kategori berhasil dihapus!');
     }

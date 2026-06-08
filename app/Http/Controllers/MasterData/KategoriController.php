@@ -8,6 +8,12 @@ use Illuminate\Http\Request;
 
 class KategoriController extends Controller
 {
+   private function checkMasterDataAccess()
+   {
+    if (!auth()->user()->canManageMasterData()) {
+        abort(403, 'Akses ditolak');
+    }
+    } 
     public function index()
     {
         $kategori = Kategori::all();
@@ -16,24 +22,26 @@ class KategoriController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'kode_kategori' => 'required|unique:kategoris,kode_kategori',
-            'nama_kategori' => 'required',
-            'jenis'         => 'required',
-        ]);
-        
-        // PERBAIKAN: Definisikan kolomnya satu per satu secara eksplisit
-        Kategori::create([
-            'kode_kategori' => $request->kode_kategori,
-            'nama_kategori' => $request->nama_kategori,
-            'jenis'         => $request->jenis,
-        ]);
-        
-        return redirect()->back()->with('success', 'Kategori Berhasil Ditambah');
-    }
+    $this->checkMasterDataAccess();
 
+    $request->validate([
+        'kode_kategori' => 'required|unique:kategoris,kode_kategori',
+        'nama_kategori' => 'required',
+        'jenis'         => 'required',
+    ]);
+
+    Kategori::create([
+        'kode_kategori' => $request->kode_kategori,
+        'nama_kategori' => $request->nama_kategori,
+        'jenis'         => $request->jenis,
+    ]);
+
+    return redirect()->back()->with('success', 'Kategori Berhasil Ditambah');
+    }
     public function update(Request $request, $id)
     {
+        $this->checkMasterDataAccess();
+
         $request->validate([
             'nama_kategori'   => 'required',
             'jenis'           => 'required',
@@ -51,6 +59,8 @@ class KategoriController extends Controller
 
     public function destroy($id)
     {
+        $this->checkMasterDataAccess();
+
         $kategori = Kategori::findOrFail($id);
         $kategori->delete();
 

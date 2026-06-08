@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
             $table->string('kode_role')->unique(); // Untuk R001, R002 sesuai wireframe
-            $table->string('nama_role');           // Admin, Kepala Unit, dll
+            $table->string('nama_role');           // Admin, Kepala lapanganan, Koordinator, dll
             $table->timestamps();
         });
     }

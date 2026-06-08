@@ -1,11 +1,18 @@
 @extends('layouts.master')
 @php
-    $userRole = strtolower(Auth::user()->role->nama_role ?? '');
+    // Gunakan trim() untuk menghindari error akibat spasi berlebih pada database
+    $userRole = strtolower(trim(Auth::user()->role->nama_role ?? ''));
     $isAdmin = ($userRole == 'admin');
     $isTeknisi = ($userRole == 'teknisi');
     
-    // Role yang HANYA BOLEH LIHAT (tidak boleh klik tombol maintenance)
-    $isReadOnly = in_array($userRole, ['kepala unit', 'tu', 'tata usaha', 'observer', 'forecaster', 'forcaster']);
+    // Role yang HANYA BOLEH LIHAT (tidak boleh klik tombol maintenance/pengecekan)
+    $isReadOnly = in_array($userRole, [
+        'kepala lapangan', 'kepala_lapangan', 'kalap', 
+        'koordinator', 
+        'tu', 'tata usaha', 
+        'observer', 
+        'forecaster', 'forcaster'
+    ]);
     
     // Role yang BOLEH INPUT
     $canMaintain = ($isAdmin || $isTeknisi);
@@ -172,7 +179,6 @@
             </div>
 
             {{-- Bagian Bawah / Action --}}
-            {{-- Bagian Bawah / Action --}}
 <div class="px-4 py-3 bg-white border-top">
     @if($isExist)
         @if($canMaintain)
@@ -186,7 +192,7 @@
                 </div>
             </a>
         @else
-            {{-- Role Kepala Unit, TU, Observer, Forecaster hanya melihat teks status --}}
+            {{-- Role Koordinator, Kepala Lapangan, TU, Observer, Forecaster hanya melihat teks status --}}
             <div class="d-flex justify-content-between align-items-center py-1">
                 <span class="text-muted font-weight-bold">
                     <i class="fas {{ $isDone ? 'fa-check-circle' : 'fa-clock' }} mr-1"></i> 
@@ -274,13 +280,13 @@
             </div>
         </a>
     @else
-        {{-- Role Read-Only --}}
+        {{-- Role Read-Only (Koordinator, Kepala Lapangan, dll) --}}
         <div class="d-flex justify-content-between align-items-center py-1">
             <span class="text-muted font-weight-bold">
                 <i class="fas {{ $kategori->is_done ? 'fa-check-circle' : 'fa-clock' }} mr-1"></i> 
                 {{ $kategori->is_done ? 'Sudah Dimaintenance' : 'Belum Dimaintenance' }}
             </span>
-            <i class="fas fa-lock text-muted small"></i>
+            <i class="fas fa-lock text-muted small" title="Hanya Teknisi/Admin"></i>
         </div>
     @endif
 </div>

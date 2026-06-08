@@ -43,7 +43,10 @@ class KalibrasiController extends Controller
         return in_array($this->getUserRole(), [
             'admin',
             'teknisi',
-            'kepala lapangan',
+            'kepala kelompok',
+            'Kepala Kelompok',
+            'kepala_kelompok',
+            'kapok',
             'koordinator',
         ]);
     }

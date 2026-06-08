@@ -8,21 +8,28 @@ use Carbon\Carbon;
 
 class JadwalDinasController extends Controller
 {
-    // ── Role yang boleh VIEW & DOWNLOAD ──────────────────────────
-    protected $roleBisaLihat = ['admin', 'Admin', 'Koordinator', 'koordinator', 'Kepala Unit', 'kepala unit'];
+    private function getUserRole(): string
+    {
+        return strtolower(trim(auth()->user()->role->nama_role ?? ''));
+    }
 
-    // ── Role yang boleh CRUD (input jadwal) ──────────────────────
-    protected $roleBisaInput = ['Kepala Unit', 'kepala unit', 'kepala_unit'];
+    private function bisaLihat(): bool
+    {
+        return in_array($this->getUserRole(), [
+            'admin', 'koordinator', 'kepala kelompok', 'Kepala Kelompok', 'kepala_kelompok', 'kapok', 'teknisi'
+        ]);
+    }
 
-    // ============================================================
-    // INDEX — Tampilkan matriks jadwal
-    // ============================================================
+    private function bisaInput(): bool
+    {
+        return in_array($this->getUserRole(), [
+             'kepala kelompok', 'Kepala Kelompok', 'kepala_kelompok', 'kapok', 'teknisi'
+        ]);
+    }
+
     public function index(Request $request)
     {
-        $userRole = auth()->user()->role->nama_role ?? '';
-
-        // Cek akses: hanya role tertentu yang boleh lihat
-        if (!in_array($userRole, $this->roleBisaLihat)) {
+        if (!$this->bisaLihat()) {
             return redirect()->route('dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke halaman Jadwal Dinas.');
         }
@@ -39,35 +46,24 @@ class JadwalDinasController extends Controller
                               ->whereYear('tanggal', $date->year)
                               ->get();
 
-        // Apakah user boleh input (tampilkan tombol Tambah Jadwal)
-        $bisaInput = in_array($userRole, $this->roleBisaInput);
+        $bisaInput = $this->bisaInput();
 
         return view('jadwal_dinas.index', compact('jadwals', 'periodeInput', 'bisaInput'));
     }
 
-    // ============================================================
-    // CREATE — Form input jadwal (Kepala Unit saja)
-    // ============================================================
     public function create()
     {
-        $userRole = auth()->user()->role->nama_role ?? '';
-
-        if (!in_array($userRole, $this->roleBisaInput)) {
+        if (!$this->bisaInput()) {
             return redirect()->route('jadwal_dinas.index')
-                ->with('error', 'Hanya Kepala Unit yang dapat menginput jadwal.');
+                ->with('error', 'Anda tidak memiliki akses untuk menginput jadwal.');
         }
 
         return view('jadwal_dinas.create');
     }
 
-    // ============================================================
-    // STORE — Simpan jadwal baru
-    // ============================================================
     public function store(Request $request)
     {
-        $userRole = auth()->user()->role->nama_role ?? '';
-
-        if (!in_array($userRole, $this->roleBisaInput)) {
+        if (!$this->bisaInput()) {
             return abort(403, 'Akses ditolak.');
         }
 
@@ -94,14 +90,9 @@ class JadwalDinasController extends Controller
         }
     }
 
-    // ============================================================
-    // DOWNLOAD — Cetak jadwal (Admin, Koordinator, Kepala Unit)
-    // ============================================================
     public function download(Request $request)
     {
-        $userRole = auth()->user()->role->nama_role ?? '';
-
-        if (!in_array($userRole, $this->roleBisaLihat)) {
+        if (!$this->bisaLihat()) {
             return abort(403, 'Anda tidak memiliki akses untuk mengunduh jadwal.');
         }
 

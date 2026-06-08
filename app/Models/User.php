@@ -62,4 +62,39 @@ class User extends Authenticatable
     public function historis() {
         return $this->hasMany(HistoriOperasional::class);
     }
+
+    public function canManageMaintenance()
+{
+    return $this->role &&
+        in_array(
+            strtolower($this->role->nama_role),
+            ['admin', 'teknisi']
+        );
+}
+    public function canViewMaintenance()
+{
+    return in_array($this->role->nama_role, [
+        'Admin',
+        'Teknisi',
+        'Kepala kelompok',
+        'Koordinator',
+    ]);
+}
+    public function canManageMasterData()
+{
+    return $this->role &&
+        in_array(
+            strtolower($this->role->nama_role),
+            ['admin', 'teknisi']
+        );
+}
+    public function canViewMasterData()
+{
+    return in_array($this->role->nama_role, [
+        'Admin',
+        'Teknisi',
+        'Kepala Kelompok',
+        'Koordinator',
+    ]);
+}
 }

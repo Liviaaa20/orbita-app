@@ -8,10 +8,18 @@ use App\Models\Kategori;     // <--- Pastikan ini merujuk ke folder Models
 use App\Models\Pengecekan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 class PengecekanController extends Controller
 {
+      private function checkMasterDataAccess()
+   {
+    if (!auth()->user()->canManageMasterData()) {
+        abort(403, 'Akses ditolak');
+    }
+    }
     public function index()
     {
+        $this->checkMasterDataAccess();
         // Hapus 'MasterData' dari dalam array with()
         // Karena MasterData adalah FOLDER, bukan RELASI database.
         $kategoris = Kategori::with(['subKategoris.alats'])->get();
@@ -21,7 +29,7 @@ class PengecekanController extends Controller
 
     public function store(Request $request)
     {
-        // Validasi input
+        $this->checkMasterDataAccess();
         $request->validate([
             'waktu' => 'required|in:Pagi,Siang,Sore',
             'alat_id' => 'required|array', // Menangkap banyak ID alat sekaligus

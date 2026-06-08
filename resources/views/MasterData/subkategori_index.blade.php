@@ -75,9 +75,11 @@
                             <h5 class="mb-0 font-weight-bold text-dark">Data Sub Kategori</h5>
                             <small class="text-muted">Kelola sub-peralatan berdasarkan kategori utama</small>
                         </div>
+                        @if(auth()->user()->canManageMasterData())
                         <button class="btn btn-dark btn-sm px-4" data-toggle="modal" data-target="#modalTambahSub" style="border-radius: 8px;">
                             <i class="fas fa-plus mr-2"></i> Tambah Sub Kategori
                         </button>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -106,6 +108,7 @@
                                             </span>
                                         </td>
                                     </tr>
+                                       
 
                                     <!-- Baris Sub Kategori -->
                                     @forelse($kat->subKategoris as $sub)
@@ -118,6 +121,7 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group btn-action-container">
+                                                    @if(auth()->user()->canManageMasterData())
                                                     <button type="button" class="btn btn-sm text-primary btn-edit-sub" 
                                                         data-id="{{ $sub->id }}" 
                                                         data-nama="{{ $sub->nama_sub_kategori }}"
@@ -125,89 +129,21 @@
                                                         data-kategori="{{ $kat->id }}">
                                                         <i class="fas fa-pen"></i>
                                                     </button>
+                                                    @endif
+                                                    @if(auth()->user()->canManageMasterData())
                                                     <button type="button"
-                                                            class="btn btn-sm text-danger"
-                                                            data-toggle="modal"
-                                                            data-target="#modalDeleteSubKategori{{ $sub->id }}">
+                                                            class="btn btn-sm text-danger btn-delete-sub"
+                                                            data-id="{{ $sub->id }}"
+                                                            data-kode="{{ $sub->kode_sub_kategori }}"
+                                                            data-nama="{{ $sub->nama_sub_kategori }}"
+                                                            data-kategori="{{ $kat->nama_kategori }}"
+                                                            title="Hapus">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
-                                        <!-- Modal Delete Sub Kategori -->
-<div class="modal fade" id="modalDeleteSubKategori{{ $sub->id }}" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <form action="{{ route('sub-kategori.destroy', $sub->id) }}" method="POST">
-            @csrf
-            @method('DELETE')
-
-            <div class="modal-content border-0 shadow">
-
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-trash-alt mr-2"></i>
-                        Hapus Sub Kategori
-                    </h5>
-
-                    <button type="button"
-                            class="close text-white"
-                            data-dismiss="modal">
-                        <span>&times;</span>
-                    </button>
-                </div>
-
-                <div class="modal-body text-center">
-
-                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
-
-                    <h5 class="font-weight-bold">
-                        Yakin ingin menghapus sub kategori ini?
-                    </h5>
-
-                    <div class="alert alert-light border text-left mt-3 mb-0">
-
-                        <p class="mb-2">
-                            <strong>Kode :</strong>
-                            {{ $sub->kode_sub_kategori }}
-                        </p>
-
-                        <p class="mb-2">
-                            <strong>Sub Kategori :</strong>
-                            {{ $sub->nama_sub_kategori }}
-                        </p>
-
-                        <p class="mb-0">
-                            <strong>Kategori :</strong>
-                            {{ $sub->kategori->nama_kategori ?? '-' }}
-                        </p>
-
-                    </div>
-
-                    <small class="text-muted d-block mt-3">
-                        Data yang sudah dihapus tidak dapat dikembalikan.
-                    </small>
-
-                </div>
-
-                <div class="modal-footer justify-content-center">
-
-                    <button type="button"
-                            class="btn btn-secondary"
-                            data-dismiss="modal">
-                        Batal
-                    </button>
-
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt mr-1"></i>
-                        Ya, Hapus
-                    </button>
-
-                </div>
-
-            </div>
-        </form>
-    </div>
-</div>
                                     @empty
                                         <tr class="collapse show group-{{ $kat->id }}">
                                             <td colspan="3" class="text-center text-muted small py-3">
@@ -315,6 +251,80 @@
         </div>
     </div>
 </div>
+<!-- MODAL DELETE -->
+<div class="modal fade" id="modalDeleteSub" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="formDeleteSub" method="POST">
+            @csrf
+            @method('DELETE')
+
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Hapus Sub Kategori
+                    </h5>
+
+                    <button type="button"
+                            class="close text-white"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body text-center">
+
+                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+
+                    <h5 class="font-weight-bold">
+                        Yakin ingin menghapus sub kategori ini?
+                    </h5>
+
+                    <div class="alert alert-light border text-left mt-3">
+
+                        <p class="mb-2">
+                            <strong>Kode :</strong>
+                            <span id="delete_kode_sub"></span>
+                        </p>
+
+                        <p class="mb-2">
+                            <strong>Sub Kategori :</strong>
+                            <span id="delete_nama_sub"></span>
+                        </p>
+
+                        <p class="mb-0">
+                            <strong>Kategori :</strong>
+                            <span id="delete_kategori_sub"></span>
+                        </p>
+
+                    </div>
+
+                    <small class="text-muted">
+                        Data yang sudah dihapus tidak dapat dikembalikan.
+                    </small>
+
+                </div>
+
+                <div class="modal-footer justify-content-center">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Batal
+                    </button>
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i>
+                        Ya, Hapus
+                    </button>
+
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -325,7 +335,9 @@ $(document).ready(function () {
 
     // 1. Perbaiki Selector Anti-Collapse agar HANYA kena di tabel
     // Jangan pakai e.preventDefault() di sini karena akan mematikan tombol lain
-    $(document).on('click', 'table .btn-action-container, table .delete-form, table .btn-edit-sub', function(e) {
+    $(document).on('click',
+    '.btn-action-container, .btn-edit-sub, .btn-delete-sub',
+    function(e){
         e.stopPropagation();
     });
 
@@ -413,6 +425,22 @@ $(document).ready(function () {
         $('#formEditSub').attr('action', `/sub-kategori/${id}`);
         $('#modalEditSub').modal('show');
     });
+    // Modal Delete
+$(document).on('click', '.btn-delete-sub', function () {
+
+    const id = $(this).data('id');
+    const kode = $(this).data('kode');
+    const nama = $(this).data('nama');
+    const kategori = $(this).data('kategori');
+
+    $('#delete_kode_sub').text(kode);
+    $('#delete_nama_sub').text(nama);
+    $('#delete_kategori_sub').text(kategori);
+
+    $('#formDeleteSub').attr('action', `/sub-kategori/${id}`);
+
+    $('#modalDeleteSub').modal('show');
+});
 });
 </script>
 @endpush

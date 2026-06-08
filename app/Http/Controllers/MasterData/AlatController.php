@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\File;
 
 class AlatController extends Controller
 {
+      private function checkMasterDataAccess()
+   {
+    if (!auth()->user()->canManageMasterData()) {
+        abort(403, 'Akses ditolak');
+    }
+    }
     public function index()
     {
         $alats = Alat::with('subKategori.kategori')->latest()->get();
@@ -29,6 +35,7 @@ class AlatController extends Controller
     
     public function store(Request $request)
     {
+        $this->checkMasterDataAccess();
         $request->validate([
             'sub_kategori_id' => 'required',
             'nama_alat'       => 'required',
@@ -66,6 +73,7 @@ class AlatController extends Controller
     
     public function update(Request $request, $id)
     {
+        $this->checkMasterDataAccess();
         $alat = Alat::findOrFail($id);
     
         $request->validate([
@@ -94,9 +102,11 @@ class AlatController extends Controller
         return redirect()->back()->with('success', 'Data alat berhasil diperbarui!');
     }
 
-public function destroy($id)
-{
-    $alat = Alat::findOrFail($id);
+        public function destroy($id)
+        {
+        $this->checkMasterDataAccess();
+
+        $alat = Alat::findOrFail($id);
     
     // Hapus file foto dari folder public
     if ($alat->foto_alat && File::exists(public_path('assets/img/alat/' . $alat->foto_alat))) {

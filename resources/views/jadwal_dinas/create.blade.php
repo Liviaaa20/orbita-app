@@ -5,7 +5,7 @@
     <div class="row mb-4">
         <div class="col-sm-6">
             <h1 class="m-0 font-weight-bold text-dark" style="font-size: 1.6rem;">Input Jadwal Dinas</h1>
-            <p class="text-muted small mb-0 mt-1">Halaman khusus Kepala Unit untuk menambahkan penugasan tim lapangan.</p>
+            <p class="text-muted small mb-0 mt-1">Halaman khusus Kepala kelompok untukmenambahkan penugasan tim lapangan.</p>
         </div>
     </div>
 

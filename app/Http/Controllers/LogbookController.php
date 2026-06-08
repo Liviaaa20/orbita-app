@@ -26,9 +26,15 @@ class LogbookController extends Controller
         return $this->getRole() === 'admin';
     }
 
+    private function isKepalaLapangan(): bool
+    {
+        return in_array($this->getRole(), ['kepalakelompok', 'kepala kelompok', 'kepala_kelompok', 'kapok']);
+    }
+
+    // Perbaikan: Menambahkan helper isKanit() agar tidak memicu error Method Not Found
     private function isKanit(): bool
     {
-        return in_array($this->getRole(), ['kepala unit', 'kepala_unit', 'kanit']);
+        return $this->isKepalaLapangan();
     }
 
     private function isKoordinator(): bool
@@ -89,11 +95,11 @@ class LogbookController extends Controller
             'approvedKoordinatorOleh',
         ])->findOrFail($id);
 
-        // Ambil semua alat berdasarkan kategori_id
+        // Perbaikan: Mencari alat menggunakan whereHas lewat relasi subKategori
         $alats = collect();
         if ($logbook->kategori_id) {
             $alats = Alat::whereHas('subKategori', function ($q) use ($logbook) {
-                $q->where('kategori_id', $logbook->kategori_id);
+                $q->where('sub_kategoris.kategori_id', $logbook->kategori_id);
             })->orderBy('nama_alat')->get();
         }
 
@@ -106,10 +112,10 @@ class LogbookController extends Controller
 
         $alatIds = $alats->pluck('id')->toArray();
 
-        // Ambil pengecekan — prioritas shift Pagi dulu
+        // Memperbaiki: Menggunakan format .toDateString() agar pencarian tanggal akurat
         $semuaPengecekan = Pengecekan::with(['alat', 'user'])
             ->whereIn('alat_id', $alatIds)
-            ->whereBetween('tanggal', [$awalBulan, $akhirBulan])
+            ->whereBetween('tanggal', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
             ->orderByRaw("FIELD(waktu, 'Pagi', 'Siang', 'Malam')")
             ->get();
 
@@ -249,7 +255,7 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // SUBMIT → pending_kanit
+    // SUBMIT → pending_kepalalapangan
     // ============================================================
     public function submit($id)
     {
@@ -261,16 +267,16 @@ class LogbookController extends Controller
         }
 
         $logbook->update([
-            'status'              => 'pending_kanit',
+            'status'              => 'pending_kepalakelompok',
             'terakhir_diperbarui' => now(),
         ]);
 
         return redirect()->route('logbook.index')
-            ->with('success', 'Logbook berhasil diajukan ke Kepala Unit!');
+            ->with('success', 'Logbook berhasil diajukan ke Kepala kelompok!');
     }
 
     // ============================================================
-    // APPROVE KANIT
+    // APPROVE KANIT / KEPALA KELOMPOK
     // ============================================================
     public function approveKanit(Request $request, $id)
     {
@@ -280,9 +286,9 @@ class LogbookController extends Controller
 
         $logbook = Logbook::findOrFail($id);
 
-        if ($logbook->status !== 'pending_kanit') {
+        if ($logbook->status !== 'pending_kepalakelompok') {
             return redirect()->back()
-                ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kanit.');
+                ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kepala Kelompok.');
         }
 
         $logbook->update([
@@ -297,7 +303,7 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // REJECT KANIT
+    // REJECT KANIT / KEPALA KELOMPOK
     // ============================================================
     public function rejectKanit(Request $request, $id)
     {
@@ -307,15 +313,15 @@ class LogbookController extends Controller
 
         $logbook = Logbook::findOrFail($id);
 
-        if ($logbook->status !== 'pending_kanit') {
+        if ($logbook->status !== 'pending_kepalakelompok') {
             return redirect()->back()
-                ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kanit.');
+                ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kepala Kelompok.');
         }
 
         $request->validate(['catatan_kanit' => 'required|string|max:500']);
 
         $logbook->update([
-            'status'            => 'rejected_kanit',
+            'status'            => 'rejected_kepalakelompok',
             'approved_kanit_by' => Auth::id(),
             'approved_kanit_at' => now(),
             'catatan_kanit'     => $request->catatan_kanit,
@@ -418,19 +424,20 @@ class LogbookController extends Controller
         $awalBulan  = $bulanCarbon->copy()->startOfMonth();
         $akhirBulan = $bulanCarbon->copy()->endOfMonth();
 
-        // Alat dari kategori
+        // Perbaikan: Query pencarian alat disesuaikan juga di bagian PDF agar tidak error
         $alats = collect();
         if ($logbook->kategori_id) {
             $alats = Alat::whereHas('subKategori', function ($q) use ($logbook) {
-                $q->where('kategori_id', $logbook->kategori_id);
+                $q->where('sub_kategoris.kategori_id', $logbook->kategori_id);
             })->orderBy('nama_alat')->get();
         }
 
         $alatIds = $alats->pluck('id')->toArray();
 
+        // Memperbaiki: Sinkronisasi format filter tanggal ke database (.toDateString())
         $semuaPengecekan = Pengecekan::with(['alat', 'user'])
             ->whereIn('alat_id', $alatIds)
-            ->whereBetween('tanggal', [$awalBulan, $akhirBulan])
+            ->whereBetween('tanggal', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
             ->orderByRaw("FIELD(waktu, 'Pagi', 'Siang', 'Malam')")
             ->get();
 
@@ -488,18 +495,19 @@ class LogbookController extends Controller
 
         return $pdf->download($namaFile);
     }
+
     public function getAlatByKategori($kategoriId)
-{
-    $alat = \App\Models\Alat::where('kategori_id', $kategoriId)->first();
+    {
+        $alat = \App\Models\Alat::where('kategori_id', $kategoriId)->first();
 
-    if (!$alat) {
-        return response()->json(null);
+        if (!$alat) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'jenis_alat' => $alat->jenis_alat,
+            'lokasi' => $alat->lokasi,
+            'periode' => $alat->periode,
+        ]);
     }
-
-    return response()->json([
-        'jenis_alat' => $alat->jenis_alat,
-        'lokasi' => $alat->lokasi,
-        'periode' => $alat->periode,
-    ]);
-}
 }
