@@ -135,8 +135,16 @@ public function update(Request $request, $id)
     );
 }
 
-    public function download($id)
-    {
-        return response()->json(['message' => 'Fitur cetak laporan segera hadir']);
-    }
+public function download($id)
+{
+    \Carbon\Carbon::setLocale('id');
+
+    $perbaikan = Perbaikan::with('alat')->findOrFail($id);
+
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('perbaikan.pdf_perbaikan', compact('perbaikan'));
+
+    $filename = 'Laporan_Perbaikan_' . $perbaikan->no_tiket . '.pdf';
+
+    return $pdf->download($filename);
+}
 }

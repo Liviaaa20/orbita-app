@@ -1,5 +1,5 @@
-{{-- ===== MODAL APPROVE KANIT ===== --}}
-<div class="modal fade" id="modalApproveKanit" tabindex="-1" role="dialog" aria-hidden="true">
+{{-- ===== MODAL APPROVE KAPOK ===== --}}
+<div class="modal fade" id="modalApproveKapok" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header bg-success text-white border-0" style="border-radius: 12px 12px 0 0;">
@@ -8,13 +8,13 @@
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form method="POST" id="modalApproveKanitForm">
+            <form method="POST" id="modalApproveKapokForm">
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-3">Logbook akan diteruskan ke Koordinator setelah disetujui.</p>
                     <div class="form-group">
                         <label class="font-weight-bold small text-uppercase">Catatan (opsional)</label>
-                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                        <textarea name="catatan_kapok" class="form-control shadow-none" rows="3"
                                   placeholder="Catatan persetujuan..."></textarea>
                     </div>
                 </div>
@@ -29,8 +29,8 @@
     </div>
 </div>
 
-{{-- ===== MODAL REJECT KANIT ===== --}}
-<div class="modal fade" id="modalRejectKanit" tabindex="-1" role="dialog" aria-hidden="true">
+{{-- ===== MODAL REJECT KAPOK ===== --}}
+<div class="modal fade" id="modalRejectKapok" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header bg-danger text-white border-0" style="border-radius: 12px 12px 0 0;">
@@ -39,7 +39,7 @@
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form method="POST" id="modalRejectKanitForm">
+            <form method="POST" id="modalRejectKapokForm">
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-3">Admin akan diminta merevisi dan mengajukan ulang.</p>
@@ -47,7 +47,7 @@
                         <label class="font-weight-bold small text-uppercase">
                             Alasan Penolakan <span class="text-danger">*</span>
                         </label>
-                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                        <textarea name="catatan_kapok" class="form-control shadow-none" rows="3"
                                   placeholder="Tuliskan alasan penolakan..." required></textarea>
                     </div>
                 </div>

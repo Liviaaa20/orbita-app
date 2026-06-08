@@ -177,25 +177,62 @@
         </div>
     </div>
 
-    {{-- Bagian Bawah: Legenda Keterangan Shift --}}
-    <div class="card shadow-sm border-0 rounded-lg">
-        <div class="card-body p-3 text-muted" style="font-size: 0.78rem; line-height: 1.7;">
-            <div class="font-weight-bold text-dark mb-1 text-uppercase tracking-wider" style="font-size: 0.8rem;">Ket:</div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div><span class="badge badge-light border font-mono">R</span> : REGULER NON SHIFT DARI JAM 07:30 - 16:00 WIB (SENIN - KAMIS)/07:30 - 16:30 WIB (JUMAT)</div>
-                    <div><span class="badge badge-light border font-mono">P</span> : DINAS TEKNISI DARI JAM 07:30 - 14:00 WIB</div>
-                    <div><span class="badge badge-light border font-mono">S</span> : DINAS TEKNISI DARI JAM 13:30 - 20:00 WIB</div>
-                    <div><span class="badge badge-light border font-mono">PS</span> : DINAS TEKNISI DARI JAM 07:30 - 20:00 WIB</div>
-                </div>
-                <div class="col-md-6">
-                    <div><span class="badge badge-light border font-mono">PS1</span> : DINAS TEKNISI DARI JAM 07:30 - 20:00 WIB</div>
-                    <div><span class="badge badge-light border font-mono">TP</span> : DINAS TEKNISI DARI JAM 07:30 - 16:00 WIB</div>
-                    <div><span class="badge badge-light border font-mono">TP1</span> : DINAS TEKNISI DARI JAM 07:30 - 16:00 WIB</div>
-                    <div><span class="badge badge-light border font-mono">S2</span> : DINAS TEKNISI DARI JAM 10:30 - 18:30 WIB</div>
-                </div>
-            </div>
+{{-- Bagian Bawah: Referensi Shift --}}
+<div class="card shadow-sm border-0 rounded-lg">
+    <div class="card-body p-3">
+
+        <div class="font-weight-bold text-dark mb-3 text-uppercase"
+             style="font-size:0.85rem;">
+            Referensi Shift
         </div>
+
+        <div class="row">
+
+            @forelse($masterShifts as $shift)
+
+                <div class="col-md-6 mb-2">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <div class="mb-1">
+                            <span class="badge badge-primary">
+                                {{ $shift->kode_shift }}
+                            </span>
+
+                            <strong>
+                                {{ strtoupper($shift->nama_shift) }}
+                            </strong>
+                        </div>
+
+                        <small class="text-muted d-block">
+                            {{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }}
+                            -
+                            {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }}
+                            WIB
+                        </small>
+
+                        @if($shift->keterangan)
+                            <small class="d-block mt-1">
+                                {{ $shift->keterangan }}
+                            </small>
+                        @endif
+
+                    </div>
+
+                </div>
+
+            @empty
+
+                <div class="col-12">
+                    <div class="alert alert-warning mb-0">
+                        Belum ada data shift.
+                    </div>
+                </div>
+
+            @endforelse
+
+        </div>
+
     </div>
 </div>
 

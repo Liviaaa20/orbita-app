@@ -18,9 +18,9 @@ class Logbook extends Model
         'jumlah_data',
         'terakhir_diperbarui',
         'status',
-        'approved_kanit_by',
-        'approved_kanit_at',
-        'catatan_kanit',
+        'approved_kapok_by',
+        'approved_kapok_at',
+        'catatan_kapok',
         'approved_koordinator_by',
         'approved_koordinator_at',
         'catatan_koordinator',
@@ -28,7 +28,7 @@ class Logbook extends Model
 
     protected $casts = [
         'terakhir_diperbarui'     => 'date',
-        'approved_kanit_at'       => 'datetime',
+        'approved_kapok_at'       => 'datetime',
         'approved_koordinator_at' => 'datetime',
     ];
 
@@ -41,9 +41,9 @@ class Logbook extends Model
         return $this->belongsTo(Kategori::class, 'kategori_id');
     }
 
-    public function approvedKanitOleh()
+    public function approvedKapokOleh()
     {
-        return $this->belongsTo(User::class, 'approved_kanit_by');
+        return $this->belongsTo(User::class, 'approved_kapok_by');
     }
 
     public function approvedKoordinatorOleh()
@@ -71,9 +71,9 @@ class Logbook extends Model
     {
         return match ($this->status) {
             'draft'                => 'Draft',
-            'pending_kanit'        => 'Menunggu Kanit',
-            'approved_kanit'       => 'Disetujui Kanit',
-            'rejected_kanit'       => 'Ditolak Kanit',
+            'pending_kapok'        => 'Menunggu Kepala Kelompok',
+            'approved_kapok'       => 'Disetujui Kepala Kelompok',
+            'rejected_kapok'       => 'Ditolak Kepala Kelompok',
             'pending_koordinator'  => 'Menunggu Koordinator',
             'approved_final'       => 'Disetujui Final',
             'rejected_koordinator' => 'Ditolak Koordinator',
@@ -88,9 +88,9 @@ class Logbook extends Model
     {
         return match ($this->status) {
             'draft'                => 'secondary',
-            'pending_kanit'        => 'warning',
-            'approved_kanit'       => 'info',
-            'rejected_kanit'       => 'danger',
+            'pending_kapok'        => 'warning',
+            'approved_kapok'       => 'info',
+            'rejected_kapok'       => 'danger',
             'pending_koordinator'  => 'warning',
             'approved_final'       => 'success',
             'rejected_koordinator' => 'danger',
@@ -107,11 +107,11 @@ class Logbook extends Model
     }
 
     // ============================================================
-    // HELPER: cek apakah bisa disubmit ke kanit
+    // HELPER: cek apakah bisa disubmit ke kapok
     // ============================================================
     public function bisaSubmit(): bool
     {
-        return in_array($this->status, ['draft', 'rejected_kanit', 'rejected_koordinator']);
+        return in_array($this->status, ['draft', 'rejected_kapok', 'rejected_koordinator']);
     }
 
     // ============================================================

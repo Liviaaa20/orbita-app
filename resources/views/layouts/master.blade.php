@@ -379,7 +379,7 @@
 {{-- ===================================================== --}}
 {{-- 7. KALIBRASI & HISTORI --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaKelompok || $isKoordinator)
 
 <li class="nav-item">
     <a href="{{ route('kalibrasi.index') }}"
@@ -404,7 +404,7 @@
 {{-- ===================================================== --}}
 {{-- 8. LOGBOOK --}}
 {{-- ===================================================== --}}
-@if($isAdmin || $isTeknisi || $isKepalaLapangan || $isKoordinator)
+@if($isAdmin || $isTeknisi || $isKepalaKelompok || $isKoordinator)
 
 <li class="nav-item">
 

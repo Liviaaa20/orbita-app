@@ -37,7 +37,7 @@ class KalibrasiController extends Controller
         return in_array($this->getUserRole(), ['admin', 'teknisi']);
     }
 
-    /** Admin, Teknisi, Kepala Unit, Koordinator → boleh lihat */
+    /** Admin, Teknisi, Kepala Kelompok, Koordinator → boleh lihat */
     private function canView(): bool
     {
         return in_array($this->getUserRole(), [

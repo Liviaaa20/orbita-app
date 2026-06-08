@@ -304,7 +304,7 @@
                                                 <select name="status"
                                                         class="form-control form-control-sm border-0 font-weight-bold {{ $p->status == 'selesai' ? 'text-success' : 'text-warning' }}"
                                                         onchange="this.form.submit()"
-                                                        style="cursor:pointer;">
+                                                        style="cursor:pointer; min-width:130px;">
 
                                                     <option value="onproses"
                                                         {{ $p->status == 'onproses' ? 'selected' : '' }}>

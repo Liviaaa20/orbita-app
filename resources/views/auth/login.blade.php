@@ -49,8 +49,13 @@
     <p class="orbita-subtitle">Operational Reporting & <br>BMKG Instrument Technical Asset</p>
 
     <div class="card card-outline shadow-lg">
-    <div class="card-body login-card-body"> <div class="text-center mb-4">
-        <img src="{{ asset('assets/dist/img/logo.png') }}" style="width: 70px;" alt="Logo BMKG">
+    <div class="card-body login-card-body"> 
+        <div class="text-center mb-4">
+            <img src="{{ asset('assets/dist/img/logo.png') }}" style="width: 70px;" alt="Logo BMKG">
+                <p class="mt-2 mb-0 font-weight-bold" style="font-size: 0.9rem; line-height: 1.4;">
+                    Stasiun Meteorologi Kelas II Maritim<br>
+                    Tanjung Emas Semarang
+                </p>
     </div>
 
     @if ($errors->any())

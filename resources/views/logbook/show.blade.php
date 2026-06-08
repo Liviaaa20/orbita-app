@@ -3,7 +3,7 @@
 @section('content')
 @php
     $userRole      = strtolower(Auth::user()->role->nama_role ?? '');
-    $isAdmin       = $userRole === 'admin';
+    $isTeknisi     = $userRole === 'teknisi';
     $isKepalaKelompok = in_array($userRole, ['kepala kelompok', 'kepala_kelompok', 'kapok']);
     $isKoordinator = $userRole === 'koordinator';
 @endphp
@@ -74,19 +74,19 @@
                     {{-- Step 1: Draft / Dibuat --}}
                     <div class="d-flex align-items-center" style="gap:4px;">
                         <span class="badge px-2 py-1
-                            {{ in_array($logbook->status, ['draft','pending_kanit','approved_kanit','rejected_kanit','pending_koordinator','approved_final','rejected_koordinator']) ? 'badge-success' : 'badge-light border' }}">
+                            {{ in_array($logbook->status, ['draft','pending_kapok','approved_kapok','rejected_kapok','pending_koordinator','approved_final','rejected_koordinator']) ? 'badge-success' : 'badge-light border' }}">
                             <i class="fas fa-edit mr-1"></i>Dibuat
                         </span>
                         <i class="fas fa-chevron-right text-muted" style="font-size:0.65rem;"></i>
                     </div>
 
-                    {{-- Step 2: Diajukan ke Kanit --}}
+                    {{-- Step 2: Diajukan ke Kepala Kelompok --}}
                     <div class="d-flex align-items-center" style="gap:4px;">
                         <span class="badge px-2 py-1
-                            @if($logbook->status === 'rejected_kanit') badge-danger
-                            @elseif(in_array($logbook->status, ['pending_kanit','approved_kanit','pending_koordinator','approved_final','rejected_koordinator'])) badge-success
+                            @if($logbook->status === 'rejected_kapok') badge-danger
+                            @elseif(in_array($logbook->status, ['pending_kapok','approved_kapok','pending_koordinator','approved_final','rejected_koordinator'])) badge-success
                             @else badge-light border @endif">
-                            <i class="fas fa-paper-plane mr-1"></i>Kanit
+                            <i class="fas fa-paper-plane mr-1"></i>Kepala Kelompok
                         </span>
                         <i class="fas fa-chevron-right text-muted" style="font-size:0.65rem;"></i>
                     </div>
@@ -111,28 +111,28 @@
                 {{-- Tombol Aksi Approval (sesuai role & status) --}}
                 <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
 
-                    {{-- ADMIN: Submit --}}
-                    @if($isAdmin && $logbook->bisaSubmit())
+                    {{-- TEKNISI: Submit --}}
+                    @if($isTeknisi && $logbook->bisaSubmit())
                         <button type="button"
                                 class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3"
                                 data-toggle="modal"
-                                data-target="#modalSubmitKanit">
-                            <i class="fas fa-paper-plane mr-1"></i> Ajukan ke Kanit
+                                data-target="#modalSubmitKapok">
+                            <i class="fas fa-paper-plane mr-1"></i> Ajukan ke Kepala Kelompok
                         </button>
                     @endif
 
-                    {{-- KANIT: Approve / Reject --}}
-                    @if($isKanit && $logbook->status === 'pending_kanit')
+                    {{-- KAPOK: Approve / Reject --}}
+                    @if($isKapok && $logbook->status === 'pending_kapok')
                         <button type="button"
                                 class="btn btn-success btn-sm font-weight-bold shadow-sm px-3"
-                                data-toggle="modal" data-target="#modalApproveKanit"
-                                onclick="setModalId('modalApproveKanitForm', '{{ route('logbook.approve-kanit', $logbook->id) }}')">
+                                data-toggle="modal" data-target="#modalApproveKapok"
+                                onclick="setModalId('modalApproveKapokForm', '{{ route('logbook.approve-kapok', $logbook->id) }}')">
                             <i class="fas fa-check mr-1"></i> Setujui
                         </button>
                         <button type="button"
                                 class="btn btn-danger btn-sm font-weight-bold shadow-sm px-3"
-                                data-toggle="modal" data-target="#modalRejectKanit"
-                                onclick="setModalId('modalRejectKanitForm', '{{ route('logbook.reject-kanit', $logbook->id) }}')">
+                                data-toggle="modal" data-target="#modalRejectKapok"
+                                onclick="setModalId('modalRejectKapokForm', '{{ route('logbook.reject-kapok', $logbook->id) }}')">
                             <i class="fas fa-times mr-1"></i> Tolak
                         </button>
                     @endif
@@ -156,22 +156,22 @@
                 </div>
             </div>
 
-            {{-- Catatan Kanit / Koordinator (jika ada) --}}
-            @if($logbook->catatan_kanit || $logbook->catatan_koordinator)
+            {{-- Catatan Kapok / Koordinator (jika ada) --}}
+            @if($logbook->catatan_kapok || $logbook->catatan_koordinator)
                 <hr class="my-3">
                 <div class="row">
-                    @if($logbook->catatan_kanit)
+                    @if($logbook->catatan_kapok)
                         <div class="col-md-6">
                             <div class="alert
-                                {{ in_array($logbook->status, ['rejected_kanit']) ? 'alert-danger' : 'alert-info' }}
+                                {{ in_array($logbook->status, ['rejected_kapok']) ? 'alert-danger' : 'alert-info' }}
                                 py-2 px-3 mb-0 small">
                                 <strong>
                                     <i class="fas fa-comment-alt mr-1"></i>
-                                    Catatan Kanit
-                                    ({{ $logbook->approvedKanitOleh->name ?? '-' }},
-                                     {{ $logbook->approved_kanit_at ? $logbook->approved_kanit_at->isoFormat('D MMM YYYY HH:mm') : '-' }}):
+                                    Catatan Kepala Kelompok
+                                    ({{ $logbook->approvedKapokOleh->name ?? '-' }},
+                                     {{ $logbook->approved_kapok_at ? $logbook->approved_kapok_at->isoFormat('D MMM YYYY HH:mm') : '-' }}):
                                 </strong>
-                                <br>{{ $logbook->catatan_kanit }}
+                                <br>{{ $logbook->catatan_kapok }}
                             </div>
                         </div>
                     @endif
@@ -422,11 +422,11 @@
         <div class="card-body p-4">
             <div class="row text-center">
 
-                {{-- Kolom Dibuat Oleh / Admin --}}
+                {{-- Kolom Dibuat Oleh / Teknisi --}}
                 <div class="col-md-4">
                     <div class="border rounded p-3 h-100">
                         <p class="font-weight-bold text-uppercase small text-muted mb-1">Dibuat Oleh</p>
-                        <p class="small text-muted mb-1">Admin</p>
+                        <p class="small text-muted mb-1">Teknisi</p>
 
                         {{-- Spacer TTD --}}
                         <div style="height:70px;" class="d-flex align-items-center justify-content-center">
@@ -440,35 +440,35 @@
                     </div>
                 </div>
 
-                {{-- Kolom Kepala Unit / Kanit --}}
+                {{-- Kolom Kepala Kelompok --}}
                 <div class="col-md-4">
                     <div class="border rounded p-3 h-100
-                        @if($logbook->status === 'rejected_kanit') border-danger
-                        @elseif(in_array($logbook->status, ['approved_kanit','pending_koordinator','approved_final'])) border-success
+                        @if($logbook->status === 'rejected_kapok') border-danger
+                        @elseif(in_array($logbook->status, ['approved_kapok','pending_koordinator','approved_final'])) border-success
                         @endif">
-                        <p class="font-weight-bold text-uppercase small text-muted mb-1">Kepala Unit</p>
+                        <p class="font-weight-bold text-uppercase small text-muted mb-1">Kepala Kelompok</p>
 
-                        @if(in_array($logbook->status, ['approved_kanit', 'pending_koordinator', 'approved_final']))
+                        @if(in_array($logbook->status, ['approved_kapok', 'pending_koordinator', 'approved_final']))
                             <p class="small text-muted mb-1">
-                                {{ $logbook->approved_kanit_at ? $logbook->approved_kanit_at->isoFormat('D MMM YYYY') : '-' }}
+                                {{ $logbook->approved_kapok_at ? $logbook->approved_kapok_at->isoFormat('D MMM YYYY') : '-' }}
                             </p>
-                            {{-- Paraf Kanit --}}
+                            {{-- Paraf Kapok --}}
                             <div style="height:70px;" class="d-flex align-items-center justify-content-center">
-                                <img src="{{ public_path('assets/dist/img/TTD/parafKanit.png') }}"
+                                <img src="{{ public_path('assets/dist/img/TTD/parafKapok.png') }}"
                                      onerror="this.style.display='none'"
-                                     height="60" alt="Paraf Kanit"
+                                     height="60" alt="Paraf Kapok"
                                      class="paraf-img">
                             </div>
                             <div class="border-top pt-2">
                                 <p class="font-weight-bold mb-0 small text-dark text-success">
                                     <i class="fas fa-check-circle mr-1"></i>
-                                    {{ $logbook->approvedKanitOleh->name ?? '-' }}
+                                    {{ $logbook->approvedKapokOleh->name ?? '-' }}
                                 </p>
                                 <p class="text-muted mb-0" style="font-size:0.75rem;">
-                                    NIP. {{ $logbook->approvedKanitOleh->nip ?? '-' }}
+                                    NIP. {{ $logbook->approvedKapokOleh->nip ?? '-' }}
                                 </p>
                             </div>
-                        @elseif($logbook->status === 'rejected_kanit')
+                        @elseif($logbook->status === 'rejected_kapok')
                             <div style="height:70px;" class="d-flex align-items-center justify-content-center">
                                 <span class="badge badge-danger px-3 py-2">
                                     <i class="fas fa-times-circle mr-1"></i>Ditolak
@@ -476,11 +476,11 @@
                             </div>
                             <div class="border-top pt-2">
                                 <p class="text-danger mb-0 small font-weight-bold">
-                                    {{ $logbook->approvedKanitOleh->name ?? '-' }}
+                                    {{ $logbook->approvedKapokOleh->name ?? '-' }}
                                 </p>
-                                @if($logbook->catatan_kanit)
+                                @if($logbook->catatan_kapok)
                                     <p class="text-muted mb-0" style="font-size:0.7rem;">
-                                        "{{ $logbook->catatan_kanit }}"
+                                        \"{{ $logbook->catatan_kapok }}\"
                                     </p>
                                 @endif
                             </div>
@@ -488,7 +488,7 @@
                             {{-- Belum diproses --}}
                             <div style="height:70px;" class="d-flex align-items-center justify-content-center">
                                 <span class="text-muted small">
-                                    @if($logbook->status === 'pending_kanit')
+                                    @if($logbook->status === 'pending_kapok')
                                         <span class="badge badge-warning">Menunggu Persetujuan</span>
                                     @else
                                         <i class="fas fa-clock text-muted"></i> Belum diproses
@@ -573,9 +573,9 @@
 
 
 {{-- ══════════════════════════════════════════════════════════ --}}
-{{-- MODAL APPROVE KANIT                                        --}}
+{{-- MODAL APPROVE KAPOK                                        --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modalApproveKanit" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade" id="modalApproveKapok" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-lg rounded-lg">
             <div class="modal-header bg-success text-white border-0">
@@ -584,13 +584,13 @@
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form method="POST" id="modalApproveKanitForm">
+            <form method="POST" id="modalApproveKapokForm">
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-3">Logbook akan diteruskan ke Koordinator setelah disetujui.</p>
                     <div class="form-group">
                         <label class="font-weight-bold small text-uppercase">Catatan (opsional)</label>
-                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                        <textarea name="catatan_kapok" class="form-control shadow-none" rows="3"
                                   placeholder="Catatan persetujuan..."></textarea>
                     </div>
                 </div>
@@ -606,9 +606,9 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════ --}}
-{{-- MODAL REJECT KANIT                                         --}}
+{{-- MODAL REJECT KAPOK                                         --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modalRejectKanit" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade" id="modalRejectKapok" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-lg rounded-lg">
             <div class="modal-header bg-danger text-white border-0">
@@ -617,15 +617,15 @@
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form method="POST" id="modalRejectKanitForm">
+            <form method="POST" id="modalRejectKapokForm">
                 @csrf
                 <div class="modal-body">
-                    <p class="text-muted mb-3">Admin akan diminta merevisi dan mengajukan ulang.</p>
+                    <p class="text-muted mb-3">Teknisi akan diminta merevisi dan mengajukan ulang.</p>
                     <div class="form-group">
                         <label class="font-weight-bold small text-uppercase">
                             Alasan Penolakan <span class="text-danger">*</span>
                         </label>
-                        <textarea name="catatan_kanit" class="form-control shadow-none" rows="3"
+                        <textarea name="catatan_kapok" class="form-control shadow-none" rows="3"
                                   placeholder="Tuliskan alasan penolakan..." required></textarea>
                     </div>
                 </div>
@@ -709,7 +709,7 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="modalSubmitKanit" tabindex="-1">
+<div class="modal fade" id="modalSubmitKapok" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
 
@@ -733,13 +733,14 @@
                     </div>
 
                     <h5 class="text-center font-weight-bold">
-                        Ajukan logbook ke Kepala Unit?
+                        Ajukan logbook ke Kepala Kelompok?
                     </h5>
 
                     <p class="text-center text-muted mb-0">
                         Logbook
                         <strong>{{ $logbook->jenis_logbook }}</strong>
-                        akan dikirim ke Kepala Unit (Kanit) untuk proses
+                        akan dikirim ke Kepala Kelompok (Kapok) untuk proses
+                        pemeriksaan dan persetujuan.
                         pemeriksaan dan persetujuan.
                     </p>
 

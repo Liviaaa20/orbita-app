@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\JadwalDinas;
+use App\Models\MasterShift;
 use Carbon\Carbon;
 
 class JadwalDinasController extends Controller
@@ -34,7 +35,10 @@ class JadwalDinasController extends Controller
                 ->with('error', 'Anda tidak memiliki akses ke halaman Jadwal Dinas.');
         }
 
-        $periodeInput = $request->input('periode', Carbon::now()->format('Y-m-d'));
+        $periodeInput = $request->input(
+            'periode',
+            Carbon::now()->format('Y-m-d')
+        );
 
         try {
             $date = Carbon::parse($periodeInput);
@@ -43,12 +47,22 @@ class JadwalDinasController extends Controller
         }
 
         $jadwals = JadwalDinas::whereMonth('tanggal', $date->month)
-                              ->whereYear('tanggal', $date->year)
-                              ->get();
+            ->whereYear('tanggal', $date->year)
+            ->get();
+
+        $masterShifts = MasterShift::orderBy('kode_shift')->get();
 
         $bisaInput = $this->bisaInput();
 
-        return view('jadwal_dinas.index', compact('jadwals', 'periodeInput', 'bisaInput'));
+        return view(
+            'jadwal_dinas.index',
+            compact(
+                'jadwals',
+                'periodeInput',
+                'bisaInput',
+                'masterShifts'
+            )
+        );
     }
 
     public function create()
@@ -58,35 +72,61 @@ class JadwalDinasController extends Controller
                 ->with('error', 'Anda tidak memiliki akses untuk menginput jadwal.');
         }
 
-        return view('jadwal_dinas.create');
+        $masterShifts = MasterShift::orderBy('kode_shift')->get();
+
+        return view(
+            'jadwal_dinas.create',
+            compact('masterShifts')
+        );
     }
 
     public function store(Request $request)
     {
         if (!$this->bisaInput()) {
-            return abort(403, 'Akses ditolak.');
+            abort(403, 'Akses ditolak.');
         }
 
         $request->validate([
-            'nama'    => 'required|string|max:255',
+            'nama' => 'required|string|max:255',
             'tanggal' => 'required|date',
-            'shift'   => 'required|string',
-            'jam'     => 'required|string',
+            'shift_id' => 'required|exists:master_shift,id',
         ]);
 
         try {
+
+            $shift = MasterShift::findOrFail(
+                $request->shift_id
+            );
+
             JadwalDinas::create([
-                'nama'    => $request->nama,
+                'nama' => $request->nama,
                 'tanggal' => $request->tanggal,
-                'shift'   => $request->shift,
-                'jam'     => $request->jam,
+
+                'shift_id' => $shift->id,
+
+                'shift' => $shift->kode_shift,
+
+                'jam' => Carbon::parse($shift->jam_mulai)->format('H:i')
+                    . ' - ' .
+                    Carbon::parse($shift->jam_selesai)->format('H:i')
+                    . ' WIB',
             ]);
 
-            return redirect()->route('jadwal_dinas.index')
-                ->with('success', 'Jadwal dinas berhasil ditambahkan!');
+            return redirect()
+                ->route('jadwal_dinas.index')
+                ->with(
+                    'success',
+                    'Jadwal dinas berhasil ditambahkan!'
+                );
+
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Gagal menyimpan: ' . $e->getMessage()
+                );
         }
     }
 

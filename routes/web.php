@@ -18,6 +18,7 @@ use App\Http\Controllers\KalibrasiController;
 use App\Http\Controllers\CetakKalibrasiController;
 use App\Http\Controllers\JadwalDinasController;
 use App\Http\Controllers\LogbookController;
+use App\Http\Controllers\MasterShiftController;
 
 // --- AUTHENTICATION ---
 Route::get('/', function () {
@@ -131,6 +132,20 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/jadwal-dinas', [JadwalDinasController::class, 'index'])->name('jadwal_dinas.index');
     Route::get('/jadwal-dinas/create', [JadwalDinasController::class, 'create'])->name('jadwal_dinas.create');
     Route::post('/jadwal-dinas/store', [JadwalDinasController::class, 'store'])->name('jadwal_dinas.store');
+    Route::post(
+        '/master-shift/store',
+        [MasterShiftController::class, 'store']
+    )->name('master_shift.store');
+
+    Route::put(
+        '/master-shift/update/{id}',
+        [MasterShiftController::class, 'update']
+    )->name('master_shift.update');
+
+    Route::delete(
+        '/master-shift/delete/{id}',
+        [MasterShiftController::class, 'destroy']
+    )->name('master_shift.destroy');
     Route::get('/jadwal-dinas/download', [JadwalDinasController::class, 'download'])->name('jadwal-dinas.download');
 
     // Export Laporan Keseluruhan (Tombol Unduh di atas tabel)
@@ -155,8 +170,8 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
 
         // Alur Approval
         Route::post('/submit/{id}',              [LogbookController::class, 'submit'])->name('submit');
-        Route::post('/approve-kanit/{id}',       [LogbookController::class, 'approveKanit'])->name('approve-kanit');
-        Route::post('/reject-kanit/{id}',        [LogbookController::class, 'rejectKanit'])->name('reject-kanit');
+        Route::post('/approve-kapok/{id}',       [LogbookController::class, 'approveKapok'])->name('approve-kapok');
+        Route::post('/reject-kapok/{id}',        [LogbookController::class, 'rejectKapok'])->name('reject-kapok');
         Route::post('/approve-koordinator/{id}', [LogbookController::class, 'approveKoordinator'])->name('approve-koordinator');
         Route::post('/reject-koordinator/{id}',  [LogbookController::class, 'rejectKoordinator'])->name('reject-koordinator');
 

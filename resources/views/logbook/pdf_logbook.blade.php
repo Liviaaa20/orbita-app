@@ -515,37 +515,37 @@
 
                 </td>
 
-                {{-- KANIT --}}
+                {{-- KAPOK --}}
                 <td>
 
                     <div class="paraf-label">
-                        Mengetahui, Kepala Unit
+                        Mengetahui, Kepala Kelompok
                     </div>
 
-                    @if(in_array($logbook->status, ['approved_kanit', 'pending_koordinator', 'approved_final']))
+                    @if(in_array($logbook->status, ['approved_kapok', 'pending_koordinator', 'approved_final']))
 
                         <div class="paraf-tanggal">
-                            {{ $logbook->approved_kanit_at?->isoFormat('D MMMM YYYY') }}
+                            {{ $logbook->approved_kapok_at?->isoFormat('D MMMM YYYY') }}
                         </div>
 
                         @php
-                            $parafKanitPath = public_path('assets/dist/img/TTD/parafKanit.png');
+                            $parafKapokPath = public_path('assets/dist/img/TTD/parafKapok.png');
                         @endphp
 
                         <div class="paraf-img-wrapper">
 
-                            @if(file_exists($parafKanitPath))
-                                <img src="{{ $parafKanitPath }}">
+                            @if(file_exists($parafKapokPath))
+                                <img src="{{ $parafKapokPath }}">
                             @endif
 
                         </div>
 
                         <div class="paraf-garis">
-                            {{ $logbook->approvedKanitOleh->name ?? '-' }}
+                            {{ $logbook->approvedKapokOleh->name ?? '-' }}
                         </div>
 
                         <div class="paraf-nip">
-                            NIP. {{ $logbook->approvedKanitOleh->nip ?? '-' }}
+                            NIP. {{ $logbook->approvedKapokOleh->nip ?? '-' }}
                         </div>
 
                     @else

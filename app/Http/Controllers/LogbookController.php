@@ -23,18 +23,12 @@ class LogbookController extends Controller
 
     private function isAdmin(): bool
     {
-        return $this->getRole() === 'admin';
+        return $this->getRole() === 'teknisi';
     }
 
-    private function isKepalaLapangan(): bool
+    private function isKapok(): bool
     {
         return in_array($this->getRole(), ['kepalakelompok', 'kepala kelompok', 'kepala_kelompok', 'kapok']);
-    }
-
-    // Perbaikan: Menambahkan helper isKanit() agar tidak memicu error Method Not Found
-    private function isKanit(): bool
-    {
-        return $this->isKepalaLapangan();
     }
 
     private function isKoordinator(): bool
@@ -54,7 +48,7 @@ class LogbookController extends Controller
 
         $query = Logbook::with([
             'kategori',
-            'approvedKanitOleh',
+            'approvedKapokOleh',
             'approvedKoordinatorOleh',
         ]);
 
@@ -91,7 +85,7 @@ class LogbookController extends Controller
     {
         $logbook = Logbook::with([
             'kategori',
-            'approvedKanitOleh',
+            'approvedKapokOleh',
             'approvedKoordinatorOleh',
         ])->findOrFail($id);
 
@@ -160,7 +154,7 @@ class LogbookController extends Controller
         }
 
         $isAdmin       = $this->isAdmin();
-        $isKanit       = $this->isKanit();
+        $isKapok       = $this->isKapok();
         $isKoordinator = $this->isKoordinator();
 
         return view('logbook.show', compact(
@@ -176,7 +170,7 @@ class LogbookController extends Controller
             'bulanCarbon',
             'bulanList',
             'isAdmin',
-            'isKanit',
+            'isKapok',
             'isKoordinator'
         ));
     }
@@ -255,7 +249,7 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // SUBMIT → pending_kepalalapangan
+    // SUBMIT → pending_kapok
     // ============================================================
     public function submit($id)
     {
@@ -267,35 +261,35 @@ class LogbookController extends Controller
         }
 
         $logbook->update([
-            'status'              => 'pending_kepalakelompok',
+            'status'              => 'pending_kapok',
             'terakhir_diperbarui' => now(),
         ]);
 
         return redirect()->route('logbook.index')
-            ->with('success', 'Logbook berhasil diajukan ke Kepala kelompok!');
+            ->with('success', 'Logbook berhasil diajukan ke Kepala Kelompok!');
     }
 
     // ============================================================
-    // APPROVE KANIT / KEPALA KELOMPOK
-    // ============================================================
-    public function approveKanit(Request $request, $id)
+    // APPROVE KAPOK / KEPALA KELOMPOK
+    // APPROVE KAPOK / KEPALA KELOMPOK
+    public function approveKapok(Request $request, $id)
     {
-        if (!$this->isKanit()) {
+        if (!$this->isKapok()) {
             return redirect()->back()->with('error', 'Akses ditolak.');
         }
 
         $logbook = Logbook::findOrFail($id);
 
-        if ($logbook->status !== 'pending_kepalakelompok') {
+        if ($logbook->status !== 'pending_kapok') {
             return redirect()->back()
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kepala Kelompok.');
         }
 
         $logbook->update([
             'status'            => 'pending_koordinator',
-            'approved_kanit_by' => Auth::id(),
-            'approved_kanit_at' => now(),
-            'catatan_kanit'     => $request->catatan_kanit,
+            'approved_kapok_by' => Auth::id(),
+            'approved_kapok_at' => now(),
+            'catatan_kapok'     => $request->catatan_kapok,
         ]);
 
         return redirect()->back()
@@ -303,11 +297,11 @@ class LogbookController extends Controller
     }
 
     // ============================================================
-    // REJECT KANIT / KEPALA KELOMPOK
+    // REJECT KAPOK / KEPALA KELOMPOK
     // ============================================================
-    public function rejectKanit(Request $request, $id)
+    public function rejectKapok(Request $request, $id)
     {
-        if (!$this->isKanit()) {
+        if (!$this->isKapok()) {
             return redirect()->back()->with('error', 'Akses ditolak.');
         }
 
@@ -318,13 +312,13 @@ class LogbookController extends Controller
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kepala Kelompok.');
         }
 
-        $request->validate(['catatan_kanit' => 'required|string|max:500']);
+        $request->validate(['catatan_kapok' => 'required|string|max:500']);
 
         $logbook->update([
             'status'            => 'rejected_kepalakelompok',
-            'approved_kanit_by' => Auth::id(),
-            'approved_kanit_at' => now(),
-            'catatan_kanit'     => $request->catatan_kanit,
+            'approved_kapok_by' => Auth::id(),
+            'approved_kapok_at' => now(),
+            'catatan_kapok'     => $request->catatan_kapok,
         ]);
 
         return redirect()->back()
@@ -394,7 +388,7 @@ class LogbookController extends Controller
     {
         $logbook = Logbook::with([
             'kategori',
-            'approvedKanitOleh',
+            'approvedKapokOleh',
             'approvedKoordinatorOleh',
         ])->findOrFail($id);
 

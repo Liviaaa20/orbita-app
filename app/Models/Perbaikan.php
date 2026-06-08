@@ -27,4 +27,8 @@ class Perbaikan extends Model
         'catatan',
         'status',
     ];
+    public function alat()
+{
+    return $this->belongsTo(Alat::class);
+}
 }
