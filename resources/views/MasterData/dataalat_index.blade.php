@@ -53,7 +53,6 @@
 
     {{-- Tabel Utama --}}
     <div class="card card-outline card-navy shadow-sm">
-        {{-- Wrapper overflow manual — TANPA table-responsive bawaan Bootstrap --}}
         <div class="card-body p-0">
             <div style="overflow-x: auto; padding: 1rem;">
                 <table id="example1" class="table table-bordered table-hover mb-0" style="width:100%">
@@ -126,13 +125,7 @@
                                     <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAlat{{ $item->id }}" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    @endif
-                                    @if(auth()->user()->canManageMasterData())
-                                    <button type="button"
-                                            class="btn btn-danger btn-sm"
-                                            title="Hapus"
-                                            data-toggle="modal"
-                                            data-target="#modalDeleteAlat{{ $item->id }}">
+                                    <button type="button" class="btn btn-danger btn-sm" title="Hapus" data-toggle="modal" data-target="#modalDeleteAlat{{ $item->id }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                     @endif
@@ -146,83 +139,7 @@
         </div>
     </div>
 </div>
-                        <!-- Modal Delete Data Alat -->
-@if(auth()->user()->canManageMasterData())
-<div class="modal fade" id="modalDeleteAlat{{ $item->id }}" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST">
-            @csrf
-            @method('DELETE')
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-trash-alt mr-2"></i>
-                        Hapus Data Alat
-                    </h5>
-                    @endif
-                    @if(auth()->user()->canManageMasterData())
-                    <button type="button"
-                            class="close text-white"
-                            data-dismiss="modal">
-                        <span>&times;</span>
-                    </button>
-                    @endif
-                </div>
-                <div class="modal-body text-center">
-                @if(auth()->user()->canManageMasterData())
-                    <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
-                    <h5 class="font-weight-bold">
-                        Yakin ingin menghapus alat ini?
-                    </h5>
-                @endif
-                </div>
-                    <div class="alert alert-light border text-left mt-3 mb-0">
-                        @if(auth()->user()->canManageMasterData())          
-                        <p class="mb-2">
-                            <strong>Kode Alat :</strong>
-                            {{ $item->kode_alat }}
-                        </p>
-                        <p class="mb-2">
-                            <strong>Nama Alat :</strong>
-                            {{ $item->nama_alat }}
-                        </p>
-                        <p class="mb-2">
-                            <strong>Kategori :</strong>
-                            {{ $item->kategori->nama_kategori ?? '-' }}
-                        </p>
-                        @if(isset($item->subKategori))
-                        <p class="mb-0">
-                            <strong>Sub Kategori :</strong>
-                            {{ $item->subKategori->nama_sub_kategori ?? '-' }}
-                        </p>
-                        @endif
-                    </div>
-                    <small class="text-muted d-block mt-3">
-                        Data alat yang dihapus tidak dapat dikembalikan.
-                    </small>
 
-                </div>
-
-                <div class="modal-footer justify-content-center">
-
-                    <button type="button"
-                            class="btn btn-secondary"
-                            data-dismiss="modal">
-                        Batal
-                    </button>
-
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt mr-1"></i>
-                        Ya, Hapus
-                    </button>
-
-                </div>
-
-            </div>
-        </form>
-    </div>
-</div>
-@endforelse
 {{-- MODAL TAMBAH --}}
 <div class="modal fade" id="modalTambahAlat" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -322,8 +239,9 @@
     </div>
 </div>
 
-{{-- MODAL VIEW & EDIT LOOP --}}
+{{-- MODAL VIEW, EDIT & DELETE LOOP --}}
 @foreach($alats as $item)
+
     {{-- MODAL VIEW --}}
     <div class="modal fade" id="modalViewAlat{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-md" role="document">
@@ -362,6 +280,7 @@
     </div>
 
     {{-- MODAL EDIT --}}
+    @if(auth()->user()->canManageMasterData())
     <div class="modal fade" id="modalEditAlat{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <form action="{{ route('data-alat.update', $item->id) }}" method="POST" enctype="multipart/form-data">
@@ -439,6 +358,48 @@
             </form>
         </div>
     </div>
+
+    {{-- MODAL DELETE --}}
+    <div class="modal fade" id="modalDeleteAlat{{ $item->id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="{{ route('data-alat.destroy', $item->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-trash-alt mr-2"></i>
+                            Hapus Data Alat
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <i class="fas fa-exclamation-triangle text-warning fa-4x mb-3"></i>
+                        <h5 class="font-weight-bold">Yakin ingin menghapus alat ini?</h5>
+                        <div class="alert alert-light border text-left mt-3 mb-0">
+                            <p class="mb-2"><strong>Nama Alat :</strong> {{ $item->nama_alat }}</p>
+                            <p class="mb-2"><strong>No. Seri :</strong> {{ $item->nomor_seri }}</p>
+                            <p class="mb-2"><strong>Kategori :</strong> {{ $item->subKategori->kategori->nama_kategori ?? '-' }}</p>
+                            <p class="mb-0"><strong>Sub Kategori :</strong> {{ $item->subKategori->nama_sub_kategori ?? '-' }}</p>
+                        </div>
+                        <small class="text-muted d-block mt-3">
+                            Data alat yang dihapus tidak dapat dikembalikan.
+                        </small>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt mr-1"></i> Ya, Hapus
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif {{-- canManageMasterData --}}
+
 @endforeach
 
 @endsection
@@ -446,11 +407,11 @@
 @push('scripts')
 <script>
     $(document).ready(function () {
-        // 1. Inisialisasi DataTable — TANPA scrollX, pakai overflow manual di wrapper
+        // 1. Inisialisasi DataTable
         if (!$.fn.DataTable.isDataTable('#example1')) {
             var table = $('#example1').DataTable({
                 "responsive": false,
-                "scrollX": false,       // ← Dimatikan, overflow ditangani wrapper div
+                "scrollX": false,
                 "lengthChange": false,
                 "autoWidth": false,
                 "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"],
@@ -464,7 +425,7 @@
             $('#example1_wrapper .col-md-6:eq(1)').addClass('text-right');
         }
 
-        // 2. Logika Dependent Dropdown (TAMBAH & EDIT)
+        // 2. Dependent Dropdown (Tambah & Edit)
         $(document).on('change', '#select_kategori_utama, .kategori-edit', function() {
             var id = $(this).val();
             var container = $(this).closest('.modal-body');
@@ -481,7 +442,7 @@
             }
         });
 
-        // 3. Nama Alat Otomatis (TAMBAH & EDIT)
+        // 3. Nama Alat Otomatis
         $(document).on('change', '#sub_kategori_id, [id^="sub_kategori_edit_"]', function() {
             var selectedText = $(this).find('option:selected').text();
             var container = $(this).closest('.modal-body');
@@ -491,7 +452,7 @@
             }
         });
 
-        // 4. Custom File Input (Foto)
+        // 4. Custom File Input Label
         $(document).on('change', '.custom-file-input', function() {
             var fileName = $(this).val().split("\\").pop();
             $(this).siblings(".custom-file-label").addClass("selected").html(fileName);

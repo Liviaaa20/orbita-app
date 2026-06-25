@@ -97,7 +97,7 @@
                 </h3>
 
                 @php
-                    $roleBisaInput = ['kepala lapangan', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
+                    $roleBisaInput = ['kepala kelompok', 'observer', 'forecaster', 'tata usaha', 'koordinator'];
                     $userRole = strtolower(Auth::user()->role->nama_role ?? '');
                 @endphp
 

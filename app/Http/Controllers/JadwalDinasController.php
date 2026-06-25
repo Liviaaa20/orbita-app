@@ -24,7 +24,7 @@ class JadwalDinasController extends Controller
     private function bisaInput(): bool
     {
         return in_array($this->getUserRole(), [
-             'kepala kelompok', 'Kepala Kelompok', 'kepala_kelompok', 'kapok', 'teknisi'
+             'kepala kelompok', 'Kepala Kelompok', 'kepala_kelompok', 'kapok'
         ]);
     }
 

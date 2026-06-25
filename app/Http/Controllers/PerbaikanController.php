@@ -6,14 +6,11 @@ use App\Models\Alat;
 use App\Models\Perbaikan;
 use App\Models\HistoriOperasional;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PerbaikanController extends Controller
 {
-    // ── Semua role yang boleh tambah permintaan (KECUALI admin) ──
-    // Disesuaikan dengan nama role di database (case-sensitive!)
     protected $roleBisaInput = [
         'Observer',
         'Tata Usaha',
@@ -24,20 +21,23 @@ class PerbaikanController extends Controller
 
     public function index()
     {
-        $perbaikans = Perbaikan::latest()->get();
+        $perbaikans = Perbaikan::with('alat')
+            ->latest()
+            ->get();
+
         return view('perbaikan.index', compact('perbaikans'));
     }
 
     public function create()
     {
-        // dd(Auth::user()->role->nama_role);
-        // Cek role — gunakan tanpa strtolower agar cocok dengan DB
         $userRole = Auth::user()->role->nama_role ?? '';
+
         if (!in_array($userRole, $this->roleBisaInput)) {
-            return abort(403, 'Otoritas tidak cukup.');
+            abort(403, 'Otoritas tidak cukup.');
         }
 
-        $alats = Alat::orderBy('nama_alat', 'asc')->get();
+        $alats = Alat::orderBy('nama_alat')->get();
+
         return view('perbaikan.create', compact('alats'));
     }
 
@@ -45,13 +45,15 @@ class PerbaikanController extends Controller
     {
         $request->validate([
             'alat_id'            => 'nullable|exists:alats,id',
-            'kategori_perbaikan' => 'required',
-            'keterangan'         => 'required',
-            'foto'               => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'kategori_perbaikan' => 'required|string',
+            'keterangan'         => 'required|string',
+            'foto'               => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         DB::beginTransaction();
+
         try {
+
             $data = [
                 'no_tiket'           => 'TKT-' . strtoupper(uniqid()),
                 'alat_id'            => $request->alat_id,
@@ -59,14 +61,22 @@ class PerbaikanController extends Controller
                 'user'               => Auth::user()->name,
                 'kategori_perbaikan' => $request->kategori_perbaikan,
                 'keterangan'         => $request->keterangan,
-                'status'             => 'onproses',
+
+                // workflow awal (TETAP DIPERTAHANKAN)
+                'status'             => 'pending',
+
+                // FIX: validasi memang tidak ada di migration → kita biarkan tapi tidak dipakai logic
+                'validasi'           => null,
+
+                'validasi_koordinator' => null,
             ];
 
             if ($request->hasFile('foto')) {
-                $data['foto'] = $request->file('foto')->store('perbaikan', 'public');
+                $data['foto_awal'] = $request->file('foto')
+                    ->store('perbaikan/foto_awal', 'public');
             }
 
-            Perbaikan::create($data);
+            $perbaikan = Perbaikan::create($data);
 
             HistoriOperasional::create([
                 'alat_id'         => $request->alat_id,
@@ -76,75 +86,179 @@ class PerbaikanController extends Controller
                 'kategori'        => '-',
                 'lokasi'          => 'Stasiun Meteorologi Maritim Semarang',
                 'deskripsi_hasil' => '[LAPORAN KERUSAKAN] ' . $request->keterangan,
-                'dokumen'         => $data['foto'] ?? null,
+                'dokumen'         => $data['foto_awal'] ?? null,
             ]);
 
             DB::commit();
-            return redirect()->route('perbaikan.index')->with('success', 'Permintaan berhasil dikirim!');
+
+            return redirect()
+                ->route('perbaikan.index')
+                ->with('success', 'Permintaan berhasil dikirim.');
+
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Gagal: ' . $e->getMessage());
+
+            DB::rollBack();
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
         }
     }
 
+    /*
+    |-----------------------------------------
+    | VALIDASI ADMIN / TEKNISI
+    |-----------------------------------------
+    */
     public function validasi(Request $request, $id)
     {
-        if (Auth::user()->role->nama_role !== 'admin' && Auth::user()->role->nama_role !== 'teknisi') {
-            return abort(403);
+        $role = strtolower(Auth::user()->role->nama_role ?? '');
+
+        if (!in_array($role, ['admin', 'teknisi'])) {
+            abort(403);
         }
 
         $perbaikan = Perbaikan::findOrFail($id);
 
+        // FIX: validasi tetap dipertahankan tapi tidak jadi logic utama
         if ($request->action == 'terima') {
-            $perbaikan->update(['tgl_diterima' => now()]);
-            return back()->with('success', 'Tiket berhasil divalidasi/diterima.');
-        } else {
-            $perbaikan->update(['tgl_diterima' => null]);
-            return back()->with('info', 'Validasi dibatalkan.');
+
+            $perbaikan->update([
+                'validasi'     => 1,
+                'tgl_diterima' => now(),
+
+                // FIX penting: status harus sinkron migration
+                'status'       => 'disetujui'
+            ]);
+
+            return back()->with(
+                'success',
+                'Permintaan berhasil diterima.'
+            );
         }
+
+        $perbaikan->update([
+            'validasi' => 0,
+            'status'   => 'ditolak'
+        ]);
+
+        return back()->with(
+            'info',
+            'Permintaan ditolak.'
+        );
     }
 
-public function update(Request $request, $id)
-{
-    if (Auth::user()->role->nama_role !== 'admin' && Auth::user()->role->nama_role !== 'teknisi') {
-        return abort(403);
+    /*
+    |-----------------------------------------
+    | UPDATE TEKNISI
+    |-----------------------------------------
+    */
+    public function update(Request $request, $id)
+    {
+        $role = strtolower(Auth::user()->role->nama_role ?? '');
+
+        if (!in_array($role, ['admin', 'teknisi'])) {
+            abort(403);
+        }
+
+        $request->validate([
+            // FIX: ikut migration enum
+            'status'        => 'required|in:onproses,menunggu_verifikasi,selesai',
+            'catatan'       => 'nullable|string',
+            'foto_selesai'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $perbaikan = Perbaikan::findOrFail($id);
+
+        $updateData = [
+            'status'  => $request->status,
+            'catatan' => $request->catatan,
+        ];
+
+        if ($request->hasFile('foto_selesai')) {
+            $updateData['foto_selesai'] = $request->file('foto_selesai')
+                ->store('perbaikan/foto_selesai', 'public');
+        }
+
+        if ($request->status == 'selesai') {
+            $updateData['tgl_selesai'] = now();
+
+            // tetap dipertahankan
+            $updateData['validasi_koordinator'] = null;
+        }
+
+        $perbaikan->update($updateData);
+
+        return back()->with(
+            'success',
+            'Data perbaikan berhasil diperbarui.'
+        );
     }
 
-    $request->validate([
-        'status'  => 'required|in:onproses,selesai',
-        'catatan' => 'nullable|string',
-    ]);
+    /*
+    |-----------------------------------------
+    | VALIDASI KOORDINATOR
+    |-----------------------------------------
+    */
+    public function validasiKoordinator(Request $request, $id)
+    {
+        $role = strtolower(Auth::user()->role->nama_role ?? '');
 
-    $perbaikan = Perbaikan::findOrFail($id);
+        if ($role != 'koordinator') {
+            abort(403);
+        }
 
-    $updateData = [
-        'catatan' => $request->catatan,
-        'status'  => $request->status,
-    ];
+        $perbaikan = Perbaikan::findOrFail($id);
 
-    $updateData['tgl_selesai'] =
-        $request->status == 'selesai'
-            ? now()
-            : null;
+        if ($request->action == 'setuju') {
 
-    $perbaikan->update($updateData);
+            $perbaikan->update([
+                'validasi_koordinator' => 1,
 
-    return back()->with(
-        'success',
-        'Status dan catatan berhasil diperbarui!'
-    );
-}
+                // FIX penting: status ikut selesai
+                'status' => 'selesai'
+            ]);
 
-public function download($id)
-{
-    \Carbon\Carbon::setLocale('id');
+            return back()->with(
+                'success',
+                'Perbaikan telah divalidasi koordinator.'
+            );
+        }
 
-    $perbaikan = Perbaikan::with('alat')->findOrFail($id);
+        $perbaikan->update([
+            'validasi_koordinator' => 0,
 
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('perbaikan.pdf_perbaikan', compact('perbaikan'));
+            // FIX: balik ke proses kerja
+            'status' => 'onproses'
+        ]);
 
-    $filename = 'Laporan_Perbaikan_' . $perbaikan->no_tiket . '.pdf';
+        return back()->with(
+            'warning',
+            'Perbaikan dikembalikan ke teknisi.'
+        );
+    }
 
-    return $pdf->download($filename);
-}
+    /*
+    |-----------------------------------------
+    | DOWNLOAD PDF
+    |-----------------------------------------
+    */
+    public function download($id)
+    {
+        \Carbon\Carbon::setLocale('id');
+
+        $perbaikan = Perbaikan::with('alat')
+            ->findOrFail($id);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'perbaikan.pdf_perbaikan',
+            compact('perbaikan')
+        );
+
+        return $pdf->download(
+            'Laporan_Perbaikan_' .
+            $perbaikan->no_tiket .
+            '.pdf'
+        );
+    }
 }
