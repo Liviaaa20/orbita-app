@@ -117,12 +117,15 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     
     // Route untuk Download Laporan (Opsional)
     Route::get('/download/{id}', [PerbaikanController::class, 'download'])->name('download');
+    Route::get('/show/{id}', [PerbaikanController::class, 'show'])->name('show');
+    Route::post('/validasi-koordinator/{id}', [PerbaikanController::class, 'validasiKoordinator'])->name('validasi-koordinator');
     });
 
     // --- KALIBRASI ALAT ---
     Route::get('/kalibrasi', [KalibrasiController::class, 'index'])->name('kalibrasi.index');
     Route::post('/kalibrasi/store', [KalibrasiController::class, 'store'])->name('kalibrasi.store');
     Route::get('/kalibrasi/sertifikat/{id}/view', [KalibrasiController::class, 'viewSertifikat'])->name('kalibrasi.sertifikat_view');
+    Route::get('/kalibrasi/cetak-pdf', [KalibrasiController::class, 'cetakPdf'])->name('kalibrasi.cetak_pdf');
     
     // --- HISTORI OPERASIONAL (Mandiri) ---
     // Halaman Utama & Filter
@@ -132,6 +135,7 @@ Route::prefix('maintenance')->name('maintenance.')->group(function () {
     Route::get('/jadwal-dinas', [JadwalDinasController::class, 'index'])->name('jadwal_dinas.index');
     Route::get('/jadwal-dinas/create', [JadwalDinasController::class, 'create'])->name('jadwal_dinas.create');
     Route::post('/jadwal-dinas/store', [JadwalDinasController::class, 'store'])->name('jadwal_dinas.store');
+    Route::post('/jadwal-dinas/import', [JadwalDinasController::class, 'import'])->name('jadwal_dinas.import');
     Route::post(
         '/master-shift/store',
         [MasterShiftController::class, 'store']

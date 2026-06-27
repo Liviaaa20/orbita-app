@@ -2,6 +2,24 @@
 
 @section('content')
 <div class="container-fluid">
+
+    {{-- BARU: Notifikasi hasil import (error per baris jika ada) --}}
+    @if(session('import_errors'))
+    <div class="alert alert-danger shadow-sm border-0 rounded-lg">
+        <h6 class="font-weight-bold mb-2">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            Import Dibatalkan &mdash; Ditemukan {{ count(session('import_errors')) }} Baris Bermasalah
+        </h6>
+        <p class="small text-muted mb-2">
+            Tidak ada data yang disimpan. Perbaiki baris-baris di bawah ini pada file Anda, lalu unggah ulang.
+        </p>
+        <ul class="mb-0 small" style="max-height:200px; overflow-y:auto;">
+            @foreach(session('import_errors') as $err)
+                <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
     
     {{-- Atas: Filter Periode & Tombol Unduh --}}
     <div class="card shadow-sm border-0 rounded-lg mb-3">
@@ -27,6 +45,13 @@
            style="background-color:#003366; border-color:#003366;">
             <i class="fas fa-plus mr-1"></i> Input Jadwal
         </a>
+
+        {{-- BARU: Tombol Import Jadwal --}}
+        <button type="button"
+                class="btn btn-light border font-weight-bold text-dark px-3 shadow-sm rounded-lg mr-2"
+                data-toggle="modal" data-target="#modalImportJadwal">
+            <i class="fas fa-file-upload mr-1 text-success"></i> Import Jadwal
+        </button>
     @endif
     <button type="button"
             class="btn btn-light border font-weight-bold text-dark px-3 shadow-sm rounded-lg"
@@ -302,6 +327,127 @@
         </div>
     </div>
 </div>
+
+{{-- ==================== POP-UP MODAL IMPORT JADWAL (BARU) ==================== --}}
+<div class="modal fade" id="modalImportJadwal" tabindex="-1" role="dialog" aria-labelledby="modalImportJadwalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg">
+
+            <form action="{{ route('jadwal_dinas.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title font-weight-bold text-dark" id="modalImportJadwalLabel">
+                        Import Jadwal Dinas (CSV / XLSX)
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body text-left">
+
+                    <div class="alert alert-info small mb-3">
+                        <strong class="d-block mb-1"><i class="fas fa-info-circle mr-1"></i>Format Kolom File</strong>
+                        Baris pertama wajib header. Kolom yang dibutuhkan: <code>nama</code>, <code>tanggal</code> (YYYY-MM-DD), <code>shift</code> (kode shift).
+                        <br>
+                        Contoh: <code>Budi Santoso, 2026-07-01, P</code>
+                        <div class="mt-2">
+                            <a href="{{ asset('contoh/contoh_import_jadwal_dinas.xlsx') }}" class="font-weight-bold mr-3" download>
+                                <i class="fas fa-file-excel text-success mr-1"></i>Unduh Contoh .xlsx
+                            </a>
+                            <a href="{{ asset('contoh/contoh_import_jadwal_dinas.csv') }}" class="font-weight-bold" download>
+                                <i class="fas fa-file-csv text-primary mr-1"></i>Unduh Contoh .csv
+                            </a>
+                        </div>
+                    </div>
+
+                    {{-- BARU: Catatan penting soal kode shift wajib dicek dulu --}}
+                    <div class="alert alert-warning small mb-3">
+                        <strong class="d-block mb-1"><i class="fas fa-exclamation-triangle mr-1"></i>Penting: Cek Kode Shift Dahulu</strong>
+                        Kolom <code>shift</code> pada file wajib persis sama dengan salah satu kode di
+                        <strong>Referensi Shift</strong> (lihat tabel di bagian bawah halaman ini).
+                        Jika ada satu baris saja dengan kode shift yang tidak ditemukan, <strong>seluruh proses import akan dibatalkan</strong> dan tidak ada data yang tersimpan.
+                        <br>
+                        Kode shift yang saat ini tersedia:
+                        <span class="d-inline-block mt-1">
+                            @forelse($masterShifts as $shift)
+                                <span class="badge badge-primary mr-1">{{ $shift->kode_shift }}</span>
+                            @empty
+                                <span class="text-muted">Belum ada data Master Shift.</span>
+                            @endforelse
+                        </span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="mb-1 text-dark font-weight-bold small text-uppercase">Pilih File</label>
+                        <input type="file"
+                               name="file_jadwal"
+                               class="form-control-file"
+                               accept=".csv,.txt,.xlsx,.xls"
+                               required>
+                        <small class="text-muted d-block mt-1">Format: CSV, XLS, atau XLSX. Maksimal 5MB.</small>
+                    </div>
+
+                    <div class="small text-muted">
+                        <i class="fas fa-shield-alt mr-1"></i>
+                        Jadwal dengan kombinasi nama &amp; tanggal yang sudah ada akan dilewati otomatis (tidak ditimpa).
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary font-weight-bold shadow-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success font-weight-bold shadow-sm px-4">
+                        <i class="fas fa-file-upload mr-1"></i> Import Sekarang
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{{-- ==================== POP-UP MODAL SUKSES IMPORT (BARU) ==================== --}}
+@if(session('import_success'))
+<div class="modal fade" id="modalImportSukses" tabindex="-1" role="dialog" aria-labelledby="modalImportSuksesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg rounded-lg text-center">
+
+            <div class="modal-body py-5 px-4">
+
+                <div class="mb-3">
+                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                </div>
+
+                <h5 class="font-weight-bold text-dark mb-2">Import Berhasil!</h5>
+
+                <p class="text-muted mb-1">
+                    <strong class="text-success">{{ session('import_success')['success_count'] }}</strong>
+                    jadwal baru berhasil ditambahkan.
+                </p>
+
+                @if(session('import_success')['skipped_count'] > 0)
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {{ session('import_success')['skipped_count'] }} baris dilewati karena sudah ada (duplikat nama &amp; tanggal).
+                    </p>
+                @endif
+
+            </div>
+
+            <div class="modal-footer bg-light border-top justify-content-center">
+                <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-4" data-dismiss="modal" style="background-color:#003366; border-color:#003366;">
+                    Selesai
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')
@@ -335,6 +481,11 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         aturFormUnduh();
+
+        // BARU: jika import berhasil, otomatis tampilkan pop-up sukses
+        @if(session('import_success'))
+            $('#modalImportSukses').modal('show');
+        @endif
     });
 </script>
 @endpush

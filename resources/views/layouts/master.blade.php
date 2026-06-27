@@ -72,6 +72,98 @@
     .nav-icon {
         color: inherit !important;
     }
+
+    /* ===================================================== */
+    /* NOTIFIKASI LONCENG - Permintaan Perbaikan (BARU)       */
+    /* ===================================================== */
+    .nav-link.notif-bell {
+        position: relative;
+    }
+    .notif-bell .fa-bell {
+        font-size: 1.15rem;
+        color: var(--bmkg-blue);
+    }
+    .notif-badge-dot {
+        position: absolute;
+        top: 4px;
+        right: 2px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 3px;
+        border-radius: 999px;
+        background-color: #dc3545;
+        color: #fff;
+        font-size: 10px;
+        line-height: 16px;
+        text-align: center;
+        font-weight: 700;
+        box-shadow: 0 0 0 2px #fff;
+    }
+    .notif-badge-dot.notif-koordinator {
+        background-color: #fd7e14;
+    }
+    .notif-dropdown-menu {
+        width: 320px;
+        max-width: 90vw;
+        padding: 0;
+        border-radius: 12px !important;
+        border: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+        overflow: hidden;
+    }
+    .notif-dropdown-header {
+        background-color: var(--bmkg-blue);
+        color: #fff;
+        padding: 10px 14px;
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+    .notif-dropdown-list {
+        max-height: 280px;
+        overflow-y: auto;
+    }
+    .notif-item {
+        display: block;
+        padding: 10px 14px;
+        border-bottom: 1px solid #f0f0f0;
+        white-space: normal;
+        color: #333 !important;
+    }
+    .notif-item:hover {
+        background-color: #f8f9fa;
+        text-decoration: none;
+    }
+    .notif-item .notif-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--bmkg-blue);
+        margin-bottom: 2px;
+    }
+    .notif-item .notif-sub {
+        font-size: 12px;
+        color: #666;
+    }
+    .notif-item .notif-time {
+        font-size: 11px;
+        color: #999;
+    }
+    .notif-empty {
+        padding: 24px 14px;
+        text-align: center;
+        color: #999;
+        font-size: 13px;
+    }
+    .notif-dropdown-footer {
+        padding: 8px 14px;
+        text-align: center;
+        background: #f8f9fa;
+    }
+    .notif-dropdown-footer a {
+        font-size: 12px;
+        font-weight: 600;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -88,6 +180,76 @@
   </ul>
 
   <ul class="navbar-nav ml-auto">
+
+    {{-- ===================================================== --}}
+    {{-- NOTIFIKASI LONCENG - Permintaan Perbaikan (BARU)       --}}
+    {{-- Tampil hanya untuk role Teknisi & Koordinator.         --}}
+    {{-- $notifBell disediakan otomatis via View Composer       --}}
+    {{-- (lihat App\Providers\AppServiceProvider).               --}}
+    {{-- ===================================================== --}}
+    @if(isset($notifBell) && $notifBell['type'])
+    <li class="nav-item dropdown">
+      <a href="#" class="nav-link notif-bell" data-toggle="dropdown" title="Notifikasi">
+        <i class="fas fa-bell"></i>
+        @if($notifBell['count'] > 0)
+          <span class="notif-badge-dot {{ $notifBell['type'] == 'koordinator' ? 'notif-koordinator' : '' }}">
+            {{ $notifBell['count'] > 9 ? '9+' : $notifBell['count'] }}
+          </span>
+        @endif
+      </a>
+
+      <div class="dropdown-menu dropdown-menu-right notif-dropdown-menu">
+
+        <div class="notif-dropdown-header">
+          @if($notifBell['type'] == 'koordinator')
+            Menunggu Verifikasi
+          @else
+            Permintaan Perbaikan Baru
+          @endif
+        </div>
+
+        <div class="notif-dropdown-list">
+
+          @forelse($notifBell['items'] as $item)
+
+            <a href="{{ route('perbaikan.index') }}" class="notif-item">
+
+              @if($notifBell['type'] == 'koordinator')
+                <div class="notif-title">{{ $item->no_tiket }}</div>
+                <div class="notif-sub">{{ $item->kategori_perbaikan }} &middot; oleh {{ $item->user }}</div>
+              @else
+                <div class="notif-title">Permintaan dari {{ $item->user }}</div>
+                <div class="notif-sub">{{ $item->kategori_perbaikan }}{{ $item->alat ? ' · ' . $item->alat->nama_alat : '' }}</div>
+              @endif
+
+              <div class="notif-time">
+                <i class="far fa-clock"></i>
+                {{ \Carbon\Carbon::parse($item->tgl_permintaan)->diffForHumans() }}
+              </div>
+
+            </a>
+
+          @empty
+
+            <div class="notif-empty">
+              <i class="far fa-bell-slash fa-lg mb-2 d-block"></i>
+              Tidak ada notifikasi baru
+            </div>
+
+          @endforelse
+
+        </div>
+
+        <div class="notif-dropdown-footer">
+          <a href="{{ route('perbaikan.index') }}">
+            Lihat Semua Permintaan Perbaikan
+          </a>
+        </div>
+
+      </div>
+    </li>
+    @endif
+
     <li class="nav-item dropdown user-menu">
       <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
         <i class="fas fa-user-circle fa-lg mr-2 text-secondary"></i>

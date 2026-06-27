@@ -6,6 +6,7 @@ use App\Models\Logbook;
 use App\Models\Pengecekan;
 use App\Models\Alat;
 use App\Models\Kategori;
+use App\Models\SubKategori;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -37,6 +38,42 @@ class LogbookController extends Controller
     }
 
     // ============================================================
+    // BARU: mapping nama bulan Indonesia -> angka bulan.
+    // Dipakai untuk parsing periode_tersedia (format "NamaBulan Tahun",
+    // misal "Januari 2026") hasil pilihan dropdown Bulan+Tahun di form
+    // Tambah/Edit Logbook. Carbon::parse() bawaan PHP tidak mengenali
+    // nama bulan Indonesia (Mei, Agustus, Oktober, Desember, dst beda
+    // penulisan dari versi Inggris), jadi diparse manual lewat mapping ini.
+    // ============================================================
+    private function parsePeriodeIndo(string $periodeTersedia): Carbon
+    {
+        $bulanMapIndo = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        $teksPeriode = strtolower(trim($periodeTersedia));
+
+        preg_match('/(\d{4})/', $teksPeriode, $cocokTahun);
+        $tahunPeriode = isset($cocokTahun[1]) ? (int) $cocokTahun[1] : now()->year;
+
+        $bulanPeriode = now()->month; // default fallback kalau nama bulan tidak ketemu
+        foreach ($bulanMapIndo as $namaBulan => $angkaBulan) {
+            if (str_contains($teksPeriode, $namaBulan)) {
+                $bulanPeriode = $angkaBulan;
+                break;
+            }
+        }
+
+        try {
+            return Carbon::createFromDate($tahunPeriode, $bulanPeriode, 1)->startOfMonth();
+        } catch (\Exception $e) {
+            return Carbon::now()->startOfMonth();
+        }
+    }
+
+    // ============================================================
     // INDEX
     // ============================================================
     public function index(Request $request)
@@ -45,6 +82,23 @@ class LogbookController extends Controller
         $kategoris        = Kategori::orderBy('nama_kategori')->get();
         $opsiJenisLogbook = Logbook::pluck('jenis_logbook')->unique()->filter()->values();
         $opsiJenisAlat    = Logbook::pluck('jenis_alat')->unique()->filter()->values();
+
+        /*
+        |---------------------------------------------------------------
+        | Data untuk dropdown bertingkat Kategori -> Sub Kategori
+        | -> Alat pada modal Tambah/Edit Logbook. Volume data relatif
+        | kecil, jadi di-load sekaligus dan difilter murni via JS
+        | (pola yang sama dipakai di form Perbaikan).
+        |
+        | Dropdown Alat di sini HANYA untuk preview informasi alat
+        | (nama, merk/type, nomor seri, lokasi, kondisi, dst) —
+        | TIDAK disimpan ke kolom manapun di tabel logbooks. Logbook
+        | tetap merepresentasikan satu Kategori (mencakup banyak alat),
+        | bukan satu Alat spesifik.
+        |---------------------------------------------------------------
+        */
+        $subKategoris = SubKategori::orderBy('nama_sub_kategori')->get();
+        $semuaAlat    = Alat::orderBy('nama_alat')->get();
 
         $query = Logbook::with([
             'kategori',
@@ -74,7 +128,9 @@ class LogbookController extends Controller
             'logbooks',
             'kategoris',
             'opsiJenisLogbook',
-            'opsiJenisAlat'
+            'opsiJenisAlat',
+            'subKategoris',
+            'semuaAlat'
         ));
     }
 
@@ -271,7 +327,7 @@ class LogbookController extends Controller
 
     // ============================================================
     // APPROVE KAPOK / KEPALA KELOMPOK
-    // APPROVE KAPOK / KEPALA KELOMPOK
+    // ============================================================
     public function approveKapok(Request $request, $id)
     {
         if (!$this->isKapok()) {
@@ -307,7 +363,7 @@ class LogbookController extends Controller
 
         $logbook = Logbook::findOrFail($id);
 
-        if ($logbook->status !== 'pending_kepalakelompok') {
+        if ($logbook->status !== 'pending_kapok') {
             return redirect()->back()
                 ->with('error', 'Logbook ini tidak dalam status menunggu persetujuan Kepala Kelompok.');
         }
@@ -315,7 +371,7 @@ class LogbookController extends Controller
         $request->validate(['catatan_kapok' => 'required|string|max:500']);
 
         $logbook->update([
-            'status'            => 'rejected_kepalakelompok',
+            'status'            => 'rejected_kapok',
             'approved_kapok_by' => Auth::id(),
             'approved_kapok_at' => now(),
             'catatan_kapok'     => $request->catatan_kapok,
@@ -406,12 +462,11 @@ class LogbookController extends Controller
                 $bulanCarbon = Carbon::now()->startOfMonth();
             }
         } else {
-            try {
-                $bagian      = explode(' - ', $logbook->periode_tersedia);
-                $bulanCarbon = Carbon::parse(trim($bagian[0]))->startOfMonth();
-            } catch (\Exception $e) {
-                $bulanCarbon = Carbon::now()->startOfMonth();
-            }
+            // DIUBAH: periode_tersedia sekarang hasil pilihan dropdown Bulan+Tahun
+            // (format "NamaBulan Tahun", misal "Januari 2026"), bukan lagi rentang
+            // manual. Parsing pakai helper parsePeriodeIndo() supaya nama bulan
+            // Indonesia (Mei, Agustus, Oktober, Desember, dst) terbaca benar.
+            $bulanCarbon = $this->parsePeriodeIndo($logbook->periode_tersedia);
         }
 
         $jumlahHari = $bulanCarbon->daysInMonth;

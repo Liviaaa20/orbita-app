@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alat;
+use App\Models\Kategori;
+use App\Models\SubKategori;
 use App\Models\Perbaikan;
 use App\Models\HistoriOperasional;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PerbaikanController extends Controller
 {
@@ -28,6 +31,21 @@ class PerbaikanController extends Controller
         return view('perbaikan.index', compact('perbaikans'));
     }
 
+    /*
+    |-----------------------------------------
+    | CREATE - Form Permintaan Perbaikan
+    |-----------------------------------------
+    | REVISI: dropdown bertingkat Kategori -> Sub Kategori -> Alat.
+    | Semua data (kategori, sub kategori, alat) di-load sekaligus
+    | saat halaman dibuka (volume data kecil), lalu difilter murni
+    | via JavaScript di sisi client tanpa AJAX tambahan.
+    |
+    | Setiap Alat dibekali atribut 'sub_kategori_id' (sudah ada di
+    | kolom tabel alats) dan SubKategori dibekali 'kategori_id'
+    | (juga sudah ada di tabel sub_kategoris), sehingga JS bisa
+    | langsung memfilter <option> berdasarkan kedua id tersebut
+    | tanpa perlu query tambahan ke server.
+    */
     public function create()
     {
         $userRole = Auth::user()->role->nama_role ?? '';
@@ -36,9 +54,13 @@ class PerbaikanController extends Controller
             abort(403, 'Otoritas tidak cukup.');
         }
 
+        $kategoris = Kategori::orderBy('nama_kategori')->get();
+
+        $subKategoris = SubKategori::orderBy('nama_sub_kategori')->get();
+
         $alats = Alat::orderBy('nama_alat')->get();
 
-        return view('perbaikan.create', compact('alats'));
+        return view('perbaikan.create', compact('kategoris', 'subKategoris', 'alats'));
     }
 
     public function store(Request $request)
@@ -48,6 +70,8 @@ class PerbaikanController extends Controller
             'kategori_perbaikan' => 'required|string',
             'keterangan'         => 'required|string',
             'foto'               => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ], [
+            'alat_id.exists' => 'Data alat yang dipilih tidak valid. Silakan pilih ulang Kategori, Sub Kategori, dan Alat.',
         ]);
 
         DB::beginTransaction();
@@ -109,6 +133,11 @@ class PerbaikanController extends Controller
     |-----------------------------------------
     | VALIDASI ADMIN / TEKNISI
     |-----------------------------------------
+    | FIX BUG: 'status' di tabel perbaikans adalah ENUM('pending','onproses','selesai').
+    | Value 'ditolak' BUKAN bagian dari enum tersebut, sehingga MySQL men-truncate
+    | dan melempar QueryException (1265 Data truncated). Status tetap di 'pending'
+    | saat ditolak; kolom 'validasi' = 0 yang menjadi penanda bahwa permintaan ini
+    | pernah ditolak (tampil sebagai badge "Tolak" di view, bukan ubah enum status).
     */
     public function validasi(Request $request, $id)
     {
@@ -128,7 +157,7 @@ class PerbaikanController extends Controller
                 'tgl_diterima' => now(),
 
                 // FIX penting: status harus sinkron migration
-                'status'       => 'disetujui'
+                'status'       => 'onproses'
             ]);
 
             return back()->with(
@@ -139,7 +168,9 @@ class PerbaikanController extends Controller
 
         $perbaikan->update([
             'validasi' => 0,
-            'status'   => 'ditolak'
+
+            // FIX: 'ditolak' bukan value enum yang valid, tetap 'pending'
+            'status'   => 'pending'
         ]);
 
         return back()->with(
@@ -152,6 +183,15 @@ class PerbaikanController extends Controller
     |-----------------------------------------
     | UPDATE TEKNISI
     |-----------------------------------------
+    | REVISI:
+    | - Status disesuaikan dengan enum DB asli (pending, onproses, selesai)
+    | - Saat status diubah ke 'selesai', foto_selesai WAJIB diisi
+    | - tgl_selesai otomatis terisi saat status = selesai
+    | - BARU: saat teknisi set status='selesai', tiket otomatis naik ke
+    |   koordinator untuk verifikasi. Kolom 'catatan' diisi otomatis
+    |   "Menunggu Verifikasi Koordinator" dan validasi_koordinator
+    |   direset ke null (supaya tidak kebawa status ACC/Tolak lama
+    |   kalau ini adalah upload ulang setelah ditolak sebelumnya).
     */
     public function update(Request $request, $id)
     {
@@ -161,18 +201,28 @@ class PerbaikanController extends Controller
             abort(403);
         }
 
-        $request->validate([
-            // FIX: ikut migration enum
-            'status'        => 'required|in:onproses,menunggu_verifikasi,selesai',
-            'catatan'       => 'nullable|string',
-            'foto_selesai'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
-
         $perbaikan = Perbaikan::findOrFail($id);
+
+        $request->validate([
+            'status'        => ['required', Rule::in(['pending', 'onproses', 'selesai'])],
+            'catatan'       => 'nullable|string',
+
+            // Wajib hanya kalau status yang dikirim = selesai DAN tiket ini belum punya foto_selesai sebelumnya
+            'foto_selesai'  => [
+                Rule::requiredIf(function () use ($request, $perbaikan) {
+                    return $request->status === 'selesai' && !$perbaikan->foto_selesai;
+                }),
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png',
+                'max:2048',
+            ],
+        ], [
+            'foto_selesai.required' => 'Foto bukti penyelesaian wajib diunggah saat status diubah ke Selesai.',
+        ]);
 
         $updateData = [
             'status'  => $request->status,
-            'catatan' => $request->catatan,
         ];
 
         if ($request->hasFile('foto_selesai')) {
@@ -181,10 +231,19 @@ class PerbaikanController extends Controller
         }
 
         if ($request->status == 'selesai') {
+
             $updateData['tgl_selesai'] = now();
 
-            // tetap dipertahankan
+            // BARU: kirim otomatis ke koordinator untuk verifikasi
+            $updateData['catatan']              = 'Menunggu Verifikasi Koordinator';
             $updateData['validasi_koordinator'] = null;
+
+        } else {
+
+            // Jika status dikembalikan ke onproses/pending secara manual oleh teknisi,
+            // reset tanggal selesai & catatan custom dari request tetap dipakai
+            $updateData['tgl_selesai'] = null;
+            $updateData['catatan']     = $request->catatan;
         }
 
         $perbaikan->update($updateData);
@@ -199,6 +258,14 @@ class PerbaikanController extends Controller
     |-----------------------------------------
     | VALIDASI KOORDINATOR
     |-----------------------------------------
+    | BARU - Alur verifikasi:
+    | - Tiket berstatus 'selesai' dengan validasi_koordinator masih null
+    |   dianggap "Menunggu Verifikasi Koordinator" (lihat kolom catatan).
+    | - ACC  -> validasi_koordinator = 1, catatan = "ACC Koordinator".
+    |           Tiket final selesai.
+    | - Tolak -> validasi_koordinator = 0, catatan = "Ditolak Koordinator",
+    |            status balik ke 'onproses', foto_selesai & tgl_selesai
+    |            DIRESET supaya teknisi wajib upload ulang dari awal.
     */
     public function validasiKoordinator(Request $request, $id)
     {
@@ -214,9 +281,7 @@ class PerbaikanController extends Controller
 
             $perbaikan->update([
                 'validasi_koordinator' => 1,
-
-                // FIX penting: status ikut selesai
-                'status' => 'selesai'
+                'catatan'              => 'ACC Koordinator',
             ]);
 
             return back()->with(
@@ -225,17 +290,53 @@ class PerbaikanController extends Controller
             );
         }
 
+        // Hapus file foto_selesai lama dari storage sebelum direset
+        if ($perbaikan->foto_selesai) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($perbaikan->foto_selesai);
+        }
+
         $perbaikan->update([
             'validasi_koordinator' => 0,
+            'catatan'              => 'Ditolak Koordinator',
 
-            // FIX: balik ke proses kerja
-            'status' => 'onproses'
+            // FIX: balik ke proses kerja, foto_selesai direset agar wajib upload ulang
+            'status'       => 'onproses',
+            'foto_selesai' => null,
+            'tgl_selesai'  => null,
         ]);
 
         return back()->with(
             'warning',
             'Perbaikan dikembalikan ke teknisi.'
         );
+    }
+
+    /*
+    |-----------------------------------------
+    | PREVIEW / DETAIL (BARU)
+    |-----------------------------------------
+    | Dipanggil via AJAX (fetch/axios) dari modal Preview di halaman index.
+    | Mengembalikan JSON berisi seluruh detail tiket + url foto + label alat.
+    */
+    public function show($id)
+    {
+        $perbaikan = Perbaikan::with('alat')->findOrFail($id);
+
+        return response()->json([
+            'no_tiket'             => $perbaikan->no_tiket,
+            'alat'                 => $perbaikan->alat->nama_alat ?? '-',
+            'user'                 => $perbaikan->user,
+            'kategori_perbaikan'   => $perbaikan->kategori_perbaikan,
+            'keterangan'           => $perbaikan->keterangan,
+            'status'               => $perbaikan->status,
+            'catatan'              => $perbaikan->catatan,
+            'validasi_koordinator' => $perbaikan->validasi_koordinator,
+            'tgl_permintaan'       => optional($perbaikan->tgl_permintaan)->format('d-m-Y H:i'),
+            'tgl_diterima'         => optional($perbaikan->tgl_diterima)->format('d-m-Y H:i'),
+            'tgl_selesai'          => optional($perbaikan->tgl_selesai)->format('d-m-Y H:i'),
+            'foto_awal_url'        => $perbaikan->foto_awal ? asset('storage/' . $perbaikan->foto_awal) : null,
+            'foto_selesai_url'     => $perbaikan->foto_selesai ? asset('storage/' . $perbaikan->foto_selesai) : null,
+        ]);
     }
 
     /*

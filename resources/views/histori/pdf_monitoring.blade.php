@@ -87,18 +87,18 @@
         @foreach($data->unique('alat_id') as $item)
             @if($item->dokumen)
                 @php
-                    // CEK PATH: Jika upload via controller perbaikan, filenya ada di storage/perbaikan
-                    // Kita coba dua kemungkinan path yang umum
-                    $pathDoc = public_path('storage/' . $item->dokumen);
-                    if(!file_exists($pathDoc)) {
-                        $pathDoc = public_path('assets/img/pengecekan/' . $item->dokumen);
-                    }
+                    $pathDoc = storage_path('app/public/' . $item->dokumen);
                 @endphp
                 <div class="dokumentasi-item">
                     @if(file_exists($pathDoc))
-                        <img src="{{ $pathDoc }}" class="foto-alat">
+
+                        <img src="data:image/{{ pathinfo($pathDoc, PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents($pathDoc)) }}"
+                            class="foto-alat">
+
                     @else
-                        <div style="height:140px; background:#eee; padding-top:50px;">Foto tidak ditemukan</div>
+
+                        Foto tidak ditemukan
+
                     @endif
                     <div class="caption">{{ $item->alat->nama_alat ?? 'Alat' }}</div>
                 </div>

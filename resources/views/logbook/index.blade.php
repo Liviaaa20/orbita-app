@@ -6,6 +6,14 @@
     $isTeknisi       = $userRole === 'teknisi';
     $isKapok = in_array($userRole, ['kepalakelompok', 'kepala kelompok', 'kepala_kelompok', 'kapok']);
     $isKoordinator = $userRole === 'koordinator';
+
+    // BARU: data untuk dropdown Periode (Bulan + Tahun), menggantikan input manual.
+    $namaBulanIndo = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    $tahunSekarangPeriode = now()->year;
+    $daftarTahunPeriode   = range($tahunSekarangPeriode - 3, $tahunSekarangPeriode + 2);
 @endphp
 
 <style>
@@ -25,6 +33,56 @@
     .icon-stat {
         width: 45px; height: 45px; border-radius: 10px;
         display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+
+    /* BARU: Panel info alat (preview) di modal Tambah/Edit Logbook */
+    .panel-info-alat {
+        background: #f8f9fa;
+        border: 1px solid #e3e6ea;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 1rem;
+    }
+    .panel-info-alat .info-alat-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #003366;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .panel-info-alat .info-alat-row {
+        display: flex;
+        font-size: 0.8rem;
+        padding: 3px 0;
+        border-bottom: 1px dashed #e3e6ea;
+    }
+    .panel-info-alat .info-alat-row:last-child { border-bottom: none; }
+    .panel-info-alat .info-alat-label {
+        width: 40%;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    .panel-info-alat .info-alat-value {
+        width: 60%;
+        color: #212529;
+        font-weight: 600;
+        word-break: break-word;
+    }
+    .panel-info-alat-empty {
+        text-align: center;
+        color: #adb5bd;
+        font-size: 0.8rem;
+        padding: 10px 0;
+    }
+
+    /* BARU: Field yang terisi otomatis (Jenis Logbook & Lokasi) — readonly, bukan disabled,
+       supaya nilainya tetap ikut ke-submit ke server. */
+    .field-otomatis {
+        background: #f1f3f5 !important;
+        cursor: not-allowed;
     }
 </style>
 
@@ -303,12 +361,12 @@
                                     @if($isKapok && $log->status == 'pending_kapok')
                                         <button type="button" class="btn btn-sm btn-success" title="Setuju"
                                                 data-toggle="modal" data-target="#modalApproveKapok"
-                                                onclick="setModalId('modalApproveKapokForm', '{{ route('logbook.approve-kapok', $log->id) }}')">>
+                                                onclick="setModalId('modalApproveKapokForm', '{{ route('logbook.approve-kapok', $log->id) }}')">
                                             <i class="fas fa-check"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-danger" title="Tolak"
                                                 data-toggle="modal" data-target="#modalRejectKapok"
-                                                onclick="setModalId('modalRejectKapokForm', '{{ route('logbook.reject-kapok', $log->id) }}')">>
+                                                onclick="setModalId('modalRejectKapokForm', '{{ route('logbook.reject-kapok', $log->id) }}')">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     @endif
@@ -357,6 +415,36 @@
     </div>
 </div>
 
+{{-- Data sumber untuk dropdown bertingkat (filter murni via JS, tanpa AJAX) --}}
+<script type="application/json" id="dataSubKategoriLogbook">
+    {!! $subKategoris->map(function ($sk) {
+        return [
+            'id' => $sk->id,
+            'kategori_id' => $sk->kategori_id,
+            'nama' => $sk->nama_sub_kategori,
+        ];
+    })->values()->toJson() !!}
+</script>
+
+<script type="application/json" id="dataAlatLogbook">
+    {!! $semuaAlat->map(function ($a) {
+        return [
+            'id' => $a->id,
+            'sub_kategori_id' => $a->sub_kategori_id,
+            'nama' => $a->nama_alat,
+            'merk_type' => $a->merk_type,
+            'nomor_seri' => $a->nomor_seri,
+            'tahun_pengadaan' => $a->tahun_pengadaan,
+            'rentang_ukur' => $a->rentang_ukur,
+            'resolusi' => $a->resolusi,
+            'akurasi' => $a->akurasi,
+            'lokasi' => $a->lokasi,
+            'kondisi' => $a->kondisi,
+            'status' => $a->status,
+        ];
+    })->values()->toJson() !!}
+</script>
+
 {{-- ===== MODAL TAMBAH ===== --}}
 <div class="modal fade" id="modalTambahLogbook" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -365,47 +453,100 @@
                 <h5 class="modal-title font-weight-bold">Tambah Logbook Baru</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form action="{{ route('logbook.store') }}" method="POST">
+            <form action="{{ route('logbook.store') }}" method="POST" class="form-logbook-bertingkat" data-prefix="tambah">
                 @csrf
                 <div class="modal-body">
-                    {{-- DIUBAH: pilih Kategori --}}
+
+                    {{-- 1. KATEGORI --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Kategori <span class="text-danger">*</span></label>
-                        <select name="kategori_id" class="form-control" style="border-radius: 8px; height: 46px;" required>
+                        <label class="font-weight-semibold mb-2">1. Kategori <span class="text-danger">*</span></label>
+                        <select name="kategori_id" class="form-control select-kategori" data-prefix="tambah"
+                                style="border-radius: 8px; height: 46px;" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($kategoris as $kat)
                                 <option value="{{ $kat->id }}">{{ $kat->nama_kategori }}</option>
                             @endforeach
                         </select>
                     </div>
+
+                    {{-- 2. SUB KATEGORI (tidak disimpan ke logbook, hanya untuk filter alat) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Jenis Logbook <span class="text-danger">*</span></label>
-                        <input type="text" name="jenis_logbook" class="form-control"
-                               style="border-radius: 8px; height: 46px;"
-                               placeholder="Contoh: LOG BOOK PERALATAN KONVENSIONAL" required>
+                        <label class="font-weight-semibold mb-2">2. Sub Kategori <span class="text-danger">*</span></label>
+                        <select class="form-control select-sub-kategori" data-prefix="tambah"
+                                style="border-radius: 8px; height: 46px;" disabled>
+                            <option value="">-- Pilih Kategori Dahulu --</option>
+                        </select>
                     </div>
+
+                    {{-- 3. ALAT (preview saja, TIDAK dikirim ke server) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Jenis Alat <span class="text-danger">*</span></label>
-                        <input type="text" name="jenis_alat" class="form-control"
-                               style="border-radius: 8px; height: 46px;"
-                               placeholder="Contoh: Konvensional / Otomatis" required>
+                        <label class="font-weight-semibold mb-2">3. Data Alat (Referensi) <span class="text-danger">*</span></label>
+                        <select class="form-control select-alat" data-prefix="tambah"
+                                style="border-radius: 8px; height: 46px;" disabled>
+                            <option value="">-- Pilih Sub Kategori Dahulu --</option>
+                        </select>
+                        <small class="text-muted">Dipilih sebagai contoh/acuan informasi alat pada kategori ini. Lokasi di bawah otomatis ikut terisi dari alat ini.</small>
                     </div>
+
+                    {{-- DIV INFO ALAT --}}
+                    <div class="panel-info-alat panel-info-alat-tambah">
+                        <div class="panel-info-alat-empty">
+                            <i class="fas fa-info-circle mr-1"></i> Pilih alat untuk melihat informasi lengkapnya
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    {{-- 4. JENIS LOGBOOK (BARU: otomatis, readonly) --}}
+                    <div class="form-group">
+                        <label class="font-weight-semibold mb-2">4. Jenis Logbook <span class="text-danger">*</span></label>
+                        <input type="text" name="jenis_logbook" class="form-control input-jenis-logbook field-otomatis" data-prefix="tambah"
+                               style="border-radius: 8px; height: 46px;"
+                               placeholder="Otomatis terisi setelah Kategori dipilih" readonly required>
+                        <small class="text-muted">Format otomatis: "Logbook Peralatan [Kategori]"</small>
+                    </div>
+
+                    {{-- jenis_alat: otomatis terisi dari Sub Kategori, readonly --}}
+                    <input type="hidden" name="jenis_alat" class="input-jenis-alat-hidden" data-prefix="tambah">
+
+                    {{-- BARU: Lokasi otomatis dari data Alat, readonly --}}
                     <div class="form-group">
                         <label class="font-weight-semibold mb-2">Lokasi <span class="text-danger">*</span></label>
-                        <input type="text" name="lokasi_tempat" class="form-control"
+                        <input type="text" name="lokasi_tempat" class="form-control input-lokasi-tempat field-otomatis" data-prefix="tambah"
                                style="border-radius: 8px; height: 46px;"
-                               placeholder="Contoh: Stasiun Maritim Tanjung Emas" required>
+                               placeholder="Otomatis terisi setelah Alat dipilih" readonly required>
+                        <small class="text-muted">Diambil dari data lokasi pada menu Data Alat.</small>
                     </div>
+
+                    {{-- 5. PERIODE (BARU: pilih Bulan + Tahun, bukan ketik manual) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Periode <span class="text-danger">*</span></label>
-                        <input type="text" name="periode_tersedia" class="form-control"
-                               style="border-radius: 8px; height: 46px;"
-                               placeholder="Contoh: Jan 2026 - Des 2026" required>
+                        <label class="font-weight-semibold mb-2">5. Periode <span class="text-danger">*</span></label>
+                        <div class="row">
+                            <div class="col-7">
+                                <select class="form-control select-periode-bulan" data-prefix="tambah"
+                                        style="border-radius: 8px; height: 46px;" required>
+                                    <option value="">-- Pilih Bulan --</option>
+                                    @foreach($namaBulanIndo as $nb)
+                                        <option value="{{ $nb }}">{{ $nb }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <select class="form-control select-periode-tahun" data-prefix="tambah"
+                                        style="border-radius: 8px; height: 46px;" required>
+                                    <option value="">-- Tahun --</option>
+                                    @foreach($daftarTahunPeriode as $thn)
+                                        <option value="{{ $thn }}">{{ $thn }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="periode_tersedia" class="input-periode-tersedia" data-prefix="tambah">
                     </div>
                 </div>
                 <div class="modal-footer border-0" style="background: #f8f9fa; border-radius: 0 0 12px 12px;">
                     <button type="button" class="btn btn-outline-secondary" style="border-radius: 8px;" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn text-white" style="border-radius: 8px; background: #003366;">Simpan</button>
+                    <button type="submit" class="btn btn-submit-logbook text-white" style="border-radius: 8px; background: #003366;" disabled>Simpan</button>
                 </div>
             </form>
         </div>
@@ -420,14 +561,15 @@
                 <h5 class="modal-title font-weight-bold">Perbarui Logbook</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form action="" method="POST" id="formEditLogbook">
+            <form action="" method="POST" id="formEditLogbook" class="form-logbook-bertingkat" data-prefix="edit">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
-                    {{-- DIUBAH: pilih Kategori --}}
+
+                    {{-- 1. KATEGORI --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Kategori <span class="text-danger">*</span></label>
-                        <select name="kategori_id" id="edit_kategori_id" class="form-control"
+                        <label class="font-weight-semibold mb-2">1. Kategori <span class="text-danger">*</span></label>
+                        <select name="kategori_id" id="edit_kategori_id" class="form-control select-kategori" data-prefix="edit"
                                 style="border-radius: 8px; height: 46px;" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($kategoris as $kat)
@@ -435,25 +577,80 @@
                             @endforeach
                         </select>
                     </div>
+
+                    {{-- 2. SUB KATEGORI --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Jenis Logbook <span class="text-danger">*</span></label>
-                        <input type="text" name="jenis_logbook" id="edit_jenis_logbook" class="form-control"
-                               style="border-radius: 8px; height: 46px;" required>
+                        <label class="font-weight-semibold mb-2">2. Sub Kategori <span class="text-danger">*</span></label>
+                        <select class="form-control select-sub-kategori" data-prefix="edit"
+                                style="border-radius: 8px; height: 46px;" disabled>
+                            <option value="">-- Pilih Kategori Dahulu --</option>
+                        </select>
                     </div>
+
+                    {{-- 3. ALAT (preview saja) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Jenis Alat <span class="text-danger">*</span></label>
-                        <input type="text" name="jenis_alat" id="edit_jenis_alat" class="form-control"
-                               style="border-radius: 8px; height: 46px;" required>
+                        <label class="font-weight-semibold mb-2">3. Data Alat (Referensi) <span class="text-danger">*</span></label>
+                        <select class="form-control select-alat" data-prefix="edit"
+                                style="border-radius: 8px; height: 46px;" disabled>
+                            <option value="">-- Pilih Sub Kategori Dahulu --</option>
+                        </select>
+                        <small class="text-muted">Pilih ulang Alat hanya kalau mau memperbarui Lokasi. Kalau tidak diubah, data lama tetap dipakai.</small>
                     </div>
+
+                    {{-- DIV INFO ALAT --}}
+                    <div class="panel-info-alat panel-info-alat-edit">
+                        <div class="panel-info-alat-empty">
+                            <i class="fas fa-info-circle mr-1"></i> Pilih alat untuk melihat informasi lengkapnya
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    {{-- 4. JENIS LOGBOOK (BARU: otomatis, readonly. Nilai lama dipertahankan
+                         kecuali Kategori benar-benar diganti) --}}
+                    <div class="form-group">
+                        <label class="font-weight-semibold mb-2">4. Jenis Logbook <span class="text-danger">*</span></label>
+                        <input type="text" name="jenis_logbook" id="edit_jenis_logbook" class="form-control input-jenis-logbook field-otomatis" data-prefix="edit"
+                               style="border-radius: 8px; height: 46px;" readonly required>
+                        <small class="text-muted">Otomatis terisi ulang hanya kalau Kategori diganti.</small>
+                    </div>
+
+                    <input type="hidden" name="jenis_alat" id="edit_jenis_alat" class="input-jenis-alat-hidden" data-prefix="edit">
+
+                    {{-- BARU: Lokasi otomatis dari data Alat, readonly. Nilai lama dipertahankan
+                         kecuali Alat dipilih ulang --}}
                     <div class="form-group">
                         <label class="font-weight-semibold mb-2">Lokasi <span class="text-danger">*</span></label>
-                        <input type="text" name="lokasi_tempat" id="edit_lokasi_tempat" class="form-control"
-                               style="border-radius: 8px; height: 46px;" required>
+                        <input type="text" name="lokasi_tempat" id="edit_lokasi_tempat" class="form-control input-lokasi-tempat field-otomatis" data-prefix="edit"
+                               style="border-radius: 8px; height: 46px;" readonly required>
+                        <small class="text-muted">Otomatis terisi ulang hanya kalau Alat dipilih ulang.</small>
                     </div>
+
+                    {{-- 5. PERIODE (BARU: pilih Bulan + Tahun, bukan ketik manual) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">Periode <span class="text-danger">*</span></label>
-                        <input type="text" name="periode_tersedia" id="edit_periode_tersedia" class="form-control"
-                               style="border-radius: 8px; height: 46px;" required>
+                        <label class="font-weight-semibold mb-2">5. Periode <span class="text-danger">*</span></label>
+                        <div class="row">
+                            <div class="col-7">
+                                <select class="form-control select-periode-bulan" data-prefix="edit"
+                                        style="border-radius: 8px; height: 46px;" required>
+                                    <option value="">-- Pilih Bulan --</option>
+                                    @foreach($namaBulanIndo as $nb)
+                                        <option value="{{ $nb }}">{{ $nb }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <select class="form-control select-periode-tahun" data-prefix="edit"
+                                        style="border-radius: 8px; height: 46px;" required>
+                                    <option value="">-- Tahun --</option>
+                                    @foreach($daftarTahunPeriode as $thn)
+                                        <option value="{{ $thn }}">{{ $thn }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="periode_tersedia" id="edit_periode_tersedia" class="input-periode-tersedia" data-prefix="edit">
+                        <small class="text-muted">Kalau data lama formatnya tidak standar, dropdown ini akan kosong — tinggal pilih ulang Bulan & Tahun-nya.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0" style="background: #f8f9fa; border-radius: 0 0 12px 12px;">
@@ -561,8 +758,41 @@
         document.getElementById('edit_jenis_logbook').value  = element.getAttribute('data-jenis_logbook');
         document.getElementById('edit_jenis_alat').value     = element.getAttribute('data-jenis_alat');
         document.getElementById('edit_lokasi_tempat').value  = element.getAttribute('data-lokasi_tempat');
-        document.getElementById('edit_periode_tersedia').value = element.getAttribute('data-periode_tersedia');
+
+        // Set hidden periode_tersedia ke nilai lama dulu (fallback aman kalau parsing gagal).
+        var periodeLama = (element.getAttribute('data-periode_tersedia') || '').trim();
+        document.getElementById('edit_periode_tersedia').value = periodeLama;
+
+        // Coba parse format "NamaBulan Tahun" (misal "Januari 2026") dari data lama,
+        // supaya dropdown Bulan & Tahun di form Edit ikut ke-preselect. Kalau data lama
+        // formatnya tidak cocok (misal hasil ketik manual sebelum fitur ini ada),
+        // dropdown dibiarkan kosong dan teknisi tinggal pilih ulang Bulan & Tahunnya
+        // (tidak masalah, karena hidden field tetap pegang nilai lama sampai diganti).
+        var potonganPeriode = periodeLama.split(' ');
+        var tahunLama = potonganPeriode.length > 1 ? potonganPeriode.pop() : '';
+        var bulanLama = potonganPeriode.join(' ');
+
+        var $editBulanPeriode = $('.select-periode-bulan[data-prefix="edit"]');
+        var $editTahunPeriode = $('.select-periode-tahun[data-prefix="edit"]');
+
+        var bulanCocok = $editBulanPeriode.find('option').filter(function () {
+            return $(this).val() === bulanLama;
+        }).length > 0;
+        var tahunCocok = $editTahunPeriode.find('option').filter(function () {
+            return $(this).val() === tahunLama;
+        }).length > 0;
+
+        $editBulanPeriode.val(bulanCocok ? bulanLama : '');
+        $editTahunPeriode.val(tahunCocok ? tahunLama : '');
+
         document.getElementById('formEditLogbook').setAttribute('action', '/logbook/update/' + element.getAttribute('data-id'));
+
+        // Trigger ulang dropdown Sub Kategori berdasarkan kategori_id yang sudah tersimpan,
+        // supaya tampilan tetap konsisten saat modal Edit dibuka. Dikirim dengan flag
+        // { init: true } supaya nilai LAMA (jenis_logbook, jenis_alat, lokasi_tempat)
+        // TIDAK ikut ke-reset/overwrite otomatis. Field-field tersebut hanya berubah
+        // kalau teknisi benar-benar memilih ulang Kategori / Sub Kategori / Alat di form edit.
+        $('.select-kategori[data-prefix="edit"]').trigger('change', { init: true });
     }
 
     function setModalId(formId, action) {
@@ -592,6 +822,218 @@
             'action',
             '/logbook/submit/' + id
         );
+    });
+
+    /* =========================================================
+       DROPDOWN BERTINGKAT Kategori -> Sub Kategori -> Alat
+       untuk modal Tambah & Edit Logbook.
+       - Kategori & Sub Kategori: nilai 'kategori_id' Sub Kategori
+         dikirim sebagai 'jenis_alat' otomatis (nama sub kategori).
+       - Alat: HANYA preview info, tidak dikirim ke server sama sekali.
+       - BARU: Jenis Logbook otomatis terisi "Logbook Peralatan [Kategori]"
+         saat Kategori dipilih. Lokasi otomatis terisi dari data Alat
+         yang dipilih (field 'lokasi' pada master Data Alat).
+       - Kedua auto-fill di atas HANYA jalan untuk aksi NYATA dari user.
+         Saat modal Edit baru dibuka (trigger { init: true }), nilai LAMA
+         tetap dipertahankan; baru ter-update kalau teknisi benar-benar
+         mengganti Kategori/Sub Kategori/Alat di form edit.
+       Dipakai untuk DUA form sekaligus (Tambah & Edit) via atribut
+       data-prefix, supaya kode tidak duplikat.
+       ========================================================= */
+    document.addEventListener('DOMContentLoaded', function () {
+
+        var dataSubKategori = JSON.parse(document.getElementById('dataSubKategoriLogbook').textContent);
+        var dataAlat         = JSON.parse(document.getElementById('dataAlatLogbook').textContent);
+
+        function resetSelect($select, placeholderText, disabled) {
+            $select.html('<option value="">' + placeholderText + '</option>');
+            $select.prop('disabled', disabled);
+        }
+
+        function renderInfoAlat(prefix, alatData) {
+            var $panel = $('.panel-info-alat-' + prefix);
+
+            if (!alatData) {
+                $panel.html('<div class="panel-info-alat-empty"><i class="fas fa-info-circle mr-1"></i> Pilih alat untuk melihat informasi lengkapnya</div>');
+                return;
+            }
+
+            var rows = [
+                ['Nama Alat', alatData.nama],
+                ['Merk / Type', alatData.merk_type],
+                ['Nomor Seri', alatData.nomor_seri],
+                ['Tahun Pengadaan', alatData.tahun_pengadaan],
+                ['Rentang Ukur', alatData.rentang_ukur],
+                ['Resolusi', alatData.resolusi],
+                ['Akurasi', alatData.akurasi],
+                ['Lokasi', alatData.lokasi],
+                ['Kondisi', alatData.kondisi],
+                ['Status', alatData.status],
+            ];
+
+            var html = '<div class="info-alat-title"><i class="fas fa-microchip"></i> Informasi Alat</div>';
+
+            rows.forEach(function (row) {
+                var label = row[0];
+                var value = row[1];
+                if (value === null || value === undefined || value === '') {
+                    value = '-';
+                }
+                html += '<div class="info-alat-row">';
+                html += '<div class="info-alat-label">' + label + '</div>';
+                html += '<div class="info-alat-value">' + $('<div>').text(value).html() + '</div>';
+                html += '</div>';
+            });
+
+            $panel.html(html);
+        }
+
+        $('.select-kategori').on('change', function (e, extra) {
+
+            // isInit = true HANYA saat modal Edit baru dibuka (lihat pemicuEdit()).
+            // Dalam kondisi ini, field turunan (jenis_logbook, jenis_alat, lokasi_tempat)
+            // tidak boleh ikut di-reset/overwrite — biarkan nilai lama tetap tampil.
+            var isInit = !!(extra && extra.init);
+
+            var prefix     = $(this).data('prefix');
+            var kategoriId = $(this).val();
+            var namaKategori = $(this).find('option:selected').text().trim();
+
+            var $selectSub  = $('.select-sub-kategori[data-prefix="' + prefix + '"]');
+            var $selectAlat = $('.select-alat[data-prefix="' + prefix + '"]');
+            var $hiddenJenisAlat = $('.input-jenis-alat-hidden[data-prefix="' + prefix + '"]');
+            var $inputJenisLogbook = $('.input-jenis-logbook[data-prefix="' + prefix + '"]');
+            var $inputLokasi = $('.input-lokasi-tempat[data-prefix="' + prefix + '"]');
+            var $btnSubmit  = $(this).closest('form').find('.btn-submit-logbook');
+
+            // Reset tampilan dropdown Alat & panel info (boleh selalu, karena Alat
+            // memang tidak bisa "ditebak" otomatis dari data lama).
+            resetSelect($selectAlat, '-- Pilih Sub Kategori Dahulu --', true);
+            renderInfoAlat(prefix, null);
+
+            if (!isInit) {
+                // Aksi nyata user mengganti Kategori -> field turunan ikut reset,
+                // supaya tidak ada data basi (jenis_alat/lokasi dari kategori sebelumnya).
+                $hiddenJenisAlat.val('');
+                $inputLokasi.val('');
+                if ($btnSubmit.length) $btnSubmit.prop('disabled', true);
+            }
+
+            if (!kategoriId) {
+                resetSelect($selectSub, '-- Pilih Kategori Dahulu --', true);
+                if (!isInit) $inputJenisLogbook.val('');
+                return;
+            }
+
+            var filtered = dataSubKategori.filter(function (sk) {
+                return String(sk.kategori_id) === String(kategoriId);
+            });
+
+            $selectSub.html('<option value="">-- Pilih Sub Kategori --</option>');
+
+            if (filtered.length === 0) {
+                $selectSub.append('<option value="" disabled>Tidak ada sub kategori untuk kategori ini</option>');
+            } else {
+                filtered.forEach(function (sk) {
+                    $selectSub.append($('<option>', { value: sk.id, text: sk.nama }));
+                });
+            }
+
+            $selectSub.prop('disabled', false);
+
+            // BARU: auto-fill Jenis Logbook = "Logbook Peralatan [Nama Kategori]".
+            // Hanya jalan untuk aksi nyata user (bukan saat modal Edit baru dibuka).
+            if (!isInit) {
+                $inputJenisLogbook.val('Logbook Peralatan ' + namaKategori);
+            }
+        });
+
+        $('.select-sub-kategori').on('change', function () {
+            // Handler ini selalu hasil aksi nyata user (tidak pernah di-trigger
+            // programatically saat init), jadi tidak perlu flag isInit.
+
+            var prefix       = $(this).data('prefix');
+            var subKategoriId = $(this).val();
+            var namaSubKategori = $(this).find('option:selected').text();
+
+            var $selectAlat = $('.select-alat[data-prefix="' + prefix + '"]');
+            var $hiddenJenisAlat = $('.input-jenis-alat-hidden[data-prefix="' + prefix + '"]');
+            var $inputLokasi = $('.input-lokasi-tempat[data-prefix="' + prefix + '"]');
+            var $btnSubmit  = $(this).closest('form').find('.btn-submit-logbook');
+
+            renderInfoAlat(prefix, null);
+
+            // Sub Kategori berubah -> pilihan Alat (sumber Lokasi) ikut berubah,
+            // jadi Lokasi yang sudah terisi sebelumnya direset, menunggu Alat baru dipilih.
+            $inputLokasi.val('');
+
+            if (!subKategoriId) {
+                resetSelect($selectAlat, '-- Pilih Sub Kategori Dahulu --', true);
+                $hiddenJenisAlat.val('');
+                if ($btnSubmit.length) $btnSubmit.prop('disabled', true);
+                return;
+            }
+
+            // jenis_alat otomatis terisi dari nama Sub Kategori
+            $hiddenJenisAlat.val(namaSubKategori);
+
+            var filteredAlat = dataAlat.filter(function (a) {
+                return String(a.sub_kategori_id) === String(subKategoriId);
+            });
+
+            $selectAlat.html('<option value="">-- Pilih Alat --</option>');
+
+            filteredAlat.forEach(function (a) {
+                $selectAlat.append($('<option>', { value: a.id, text: a.nama }));
+            });
+
+            $selectAlat.prop('disabled', filteredAlat.length === 0);
+
+            // Boleh disubmit begitu Sub Kategori sudah dipilih (Alat tetap wajib dipilih dulu
+            // secara UX, tapi tidak memblokir submit form karena tidak dikirim ke server).
+            if ($btnSubmit.length) $btnSubmit.prop('disabled', filteredAlat.length === 0);
+        });
+
+        $('.select-alat').on('change', function () {
+            // Handler ini selalu hasil aksi nyata user.
+
+            var prefix = $(this).data('prefix');
+            var alatId = $(this).val();
+            var $inputLokasi = $('.input-lokasi-tempat[data-prefix="' + prefix + '"]');
+
+            if (!alatId) {
+                renderInfoAlat(prefix, null);
+                $inputLokasi.val('');
+                return;
+            }
+
+            var alatData = dataAlat.find(function (a) {
+                return String(a.id) === String(alatId);
+            });
+
+            renderInfoAlat(prefix, alatData);
+
+            // BARU: auto-fill Lokasi dari data Alat yang dipilih.
+            if (alatData) {
+                $inputLokasi.val(alatData.lokasi || '');
+            }
+        });
+
+        /* =========================================================
+           BARU: Periode — gabungkan dropdown Bulan + Tahun jadi satu
+           nilai "NamaBulan Tahun" (misal "Januari 2026") yang dikirim
+           lewat hidden input periode_tersedia. Berlaku untuk form
+           Tambah maupun Edit (lewat data-prefix yang sama).
+           ========================================================= */
+        $('.select-periode-bulan, .select-periode-tahun').on('change', function () {
+            var prefix = $(this).data('prefix');
+            var bulan = $('.select-periode-bulan[data-prefix="' + prefix + '"]').val();
+            var tahun = $('.select-periode-tahun[data-prefix="' + prefix + '"]').val();
+            var $hiddenPeriode = $('.input-periode-tersedia[data-prefix="' + prefix + '"]');
+
+            $hiddenPeriode.val((bulan && tahun) ? (bulan + ' ' + tahun) : '');
+        });
+
     });
 </script>
 @endpush

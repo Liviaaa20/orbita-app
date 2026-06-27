@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\JadwalDinas;
 use App\Models\MasterShift;
+use App\Imports\JadwalDinasImport;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class JadwalDinasController extends Controller
 {
@@ -128,6 +131,72 @@ class JadwalDinasController extends Controller
                     'Gagal menyimpan: ' . $e->getMessage()
                 );
         }
+    }
+
+    /*
+    |-----------------------------------------------------------------
+    | IMPORT JADWAL DINAS DARI CSV / XLSX (BARU)
+    |-----------------------------------------------------------------
+    | Format kolom file (header baris pertama): nama | tanggal | shift
+    | - 'shift' wajib cocok dengan kode_shift di Master Shift.
+    | - Kombinasi (nama, tanggal) yang sudah ada di DB akan di-SKIP.
+    | - Jika ADA baris lain yang gagal validasi (selain duplikat),
+    |   SELURUH import dibatalkan (rollback total) dan daftar error
+    |   ditampilkan kembali ke user — tidak ada data yang tersimpan
+    |   sebagian.
+    */
+    public function import(Request $request)
+    {
+        if (!$this->bisaInput()) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'file_jadwal' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
+        ], [
+            'file_jadwal.required' => 'Silakan pilih file CSV atau XLSX terlebih dahulu.',
+            'file_jadwal.mimes'    => 'Format file harus CSV, XLS, atau XLSX.',
+            'file_jadwal.max'      => 'Ukuran file maksimal 5MB.',
+        ]);
+
+        $import = new JadwalDinasImport();
+
+        try {
+            Excel::import($import, $request->file('file_jadwal'));
+        } catch (\Exception $e) {
+            return back()->with(
+                'error',
+                'Gagal membaca file: ' . $e->getMessage()
+            );
+        }
+
+        // Jika ada baris yang gagal validasi -> ROLLBACK TOTAL, tidak ada yang disimpan
+        if (!empty($import->errors)) {
+            return back()->with([
+                'import_errors' => $import->errors,
+                'error' => 'Import dibatalkan. Ditemukan ' . count($import->errors) . ' baris bermasalah pada file. Perbaiki file lalu unggah ulang.',
+            ]);
+        }
+
+        // Tidak ada error sama sekali -> baru simpan semua baris valid
+        DB::transaction(function () use ($import) {
+            $import->simpanSemua();
+        });
+
+        $pesanSukses = "Import berhasil: {$import->successCount} jadwal baru ditambahkan.";
+
+        if ($import->skippedCount > 0) {
+            $pesanSukses .= " {$import->skippedCount} baris dilewati karena sudah ada (duplikat nama & tanggal).";
+        }
+
+        return redirect()
+            ->route('jadwal_dinas.index')
+            ->with('success', $pesanSukses)
+            ->with('import_success', [
+                'success_count' => $import->successCount,
+                'skipped_count' => $import->skippedCount,
+                'message'       => $pesanSukses,
+            ]);
     }
 
     public function download(Request $request)

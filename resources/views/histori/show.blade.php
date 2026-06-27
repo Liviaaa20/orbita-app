@@ -26,52 +26,85 @@
                     <h6 class="font-weight-bold m-0 text-navy"><i class="fas fa-info-circle mr-2"></i>Informasi Peralatan</h6>
                 </div>
                 <div class="card-body">
-                <table class="table table-sm table-borderless">
+<table class="table table-sm table-borderless">
     <tr>
         <th width="200">Nama Alat</th>
-        <td>: <strong class="text-primary">{{ $data->alat->nama_alat }}</strong></td>
+        <td>:
+            <strong class="text-primary">
+                {{ optional($data->alat)->nama_alat ?? 'Tanpa Alat' }}
+            </strong>
+        </td>
     </tr>
+
     <tr>
         <th>Kategori / Sub</th>
-        <td>: {{ $data->alat->subKategori->kategori->nama_kategori }} / {{ $data->alat->subKategori->nama_sub_kategori }}</td>
-    </tr>
-    <tr>
-        <th>Nomor Seri (S/N)</th>
-        <td>: <code class="text-dark">{{ $data->alat->nomor_seri ?? '-' }}</code></td>
-    </tr>
-    <tr>
-        <th>Lokasi Penempatan</th>
-        <td>: {{ $data->alat->lokasi }}</td>
-    </tr>
-    <tr class="border-top">
-        <th class="pt-3">Tanggal Pengecekan</th>
-        <td class="pt-3">: 
-            {{-- Cek apakah kolom 'tanggal' atau 'waktu' valid untuk di-parse --}}
-            @if(isset($data->tanggal))
-                {{ \Carbon\Carbon::parse($data->tanggal)->translatedFormat('d F Y') }}
+        <td>:
+            @if($data->alat && $data->alat->subKategori)
+                {{ $data->alat->subKategori->kategori->nama_kategori ?? '-' }}
+                /
+                {{ $data->alat->subKategori->nama_sub_kategori ?? '-' }}
             @else
-                {{ \Carbon\Carbon::parse($data->waktu)->translatedFormat('d F Y') }}
+                -
             @endif
         </td>
     </tr>
+
+    <tr>
+        <th>Nomor Seri (S/N)</th>
+        <td>:
+            <code class="text-dark">
+                {{ optional($data->alat)->nomor_seri ?? '-' }}
+            </code>
+        </td>
+    </tr>
+
+    <tr>
+        <th>Lokasi Penempatan</th>
+        <td>:
+            {{ optional($data->alat)->lokasi ?? '-' }}
+        </td>
+    </tr>
+
+    <tr class="border-top">
+        <th class="pt-3">Tanggal Pengecekan</th>
+        <td class="pt-3">
+            :
+            @if(!empty($data->tanggal))
+                {{ \Carbon\Carbon::parse($data->tanggal)->translatedFormat('d F Y') }}
+            @elseif(!empty($data->waktu))
+                {{ \Carbon\Carbon::parse($data->waktu)->translatedFormat('d F Y') }}
+            @else
+                -
+            @endif
+        </td>
+    </tr>
+
     <tr>
         <th>Waktu / Shift</th>
-        <td>: 
+        <td>:
             <span class="badge badge-info">
-                {{-- Tampilkan langsung tanpa Carbon::parse untuk menghindari error 'Siang/Malam' --}}
-                @if(isset($data->waktu_pelaksanaan))
-                    {{ $data->waktu_pelaksanaan }}
-                @else
-                    {{ $data->waktu }}
-                @endif
+                {{ $data->waktu_pelaksanaan ?? $data->waktu ?? '-' }}
             </span>
         </td>
     </tr>
+
     <tr>
         <th>Kondisi Akhir</th>
-        <td>: 
-            <span class="badge {{ $data->kondisi_akhir == 'Baik' ? 'badge-success' : ($data->kondisi_akhir == 'Rusak Ringan' ? 'badge-warning' : 'badge-danger') }}">
-                {{ $data->kondisi_akhir }}
+        <td>:
+            @php
+                $badge = 'badge-secondary';
+
+                if ($data->kondisi_akhir == 'Baik') {
+                    $badge = 'badge-success';
+                } elseif ($data->kondisi_akhir == 'Rusak Ringan') {
+                    $badge = 'badge-warning';
+                } elseif ($data->kondisi_akhir == 'Rusak Berat') {
+                    $badge = 'badge-danger';
+                }
+            @endphp
+
+            <span class="badge {{ $badge }}">
+                {{ $data->kondisi_akhir ?? '-' }}
             </span>
         </td>
     </tr>
@@ -111,24 +144,59 @@
             </div>
 
             {{-- KARTU 4: FOTO KEGIATAN (Ini yang kamu upload di storeHasilFisik) --}}
-            <div class="card shadow-sm border-0" style="border-radius: 12px;">
-                <div class="card-header bg-white py-3 text-center">
-                    <h6 class="font-weight-bold m-0">Foto Dokumentasi</h6>
-                </div>
-                <div class="card-body text-center">
-                    @if($data->foto_kegiatan)
-                        <img src="{{ asset('storage/' . $data->foto_kegiatan) }}" class="img-fluid rounded shadow-sm mb-3" alt="Foto Kegiatan" style="max-height: 250px; object-fit: cover;">
-                        <a href="{{ asset('storage/' . $data->foto_kegiatan) }}" target="_blank" class="btn btn-outline-primary btn-block btn-sm">
-                            <i class="fas fa-search-plus mr-1"></i> Lihat Foto Full
-                        </a>
-                    @else
-                        <div class="py-4">
-                            <i class="fas fa-image fa-4x text-light mb-3"></i>
-                            <p class="text-muted small">Tidak ada foto dokumentasi diunggah.</p>
-                        </div>
-                    @endif
-                </div>
+{{-- KARTU 4: DOKUMEN / FOTO --}}
+<div class="card shadow-sm border-0" style="border-radius: 12px;">
+    <div class="card-header bg-white py-3 text-center">
+        <h6 class="font-weight-bold m-0">Foto Dokumentasi</h6>
+    </div>
+
+    <div class="card-body text-center">
+
+        @if($data->dokumen)
+
+            @php
+                $ext = strtolower(pathinfo($data->dokumen, PATHINFO_EXTENSION));
+                $imgExt = ['jpg', 'jpeg', 'png', 'webp'];
+            @endphp
+
+            @if(in_array($ext, $imgExt))
+
+                <img src="{{ asset('storage/' . $data->dokumen) }}"
+                     class="img-fluid rounded shadow-sm mb-3"
+                     alt="Foto Dokumentasi"
+                     style="max-height:250px; object-fit:cover;">
+
+                <a href="{{ asset('storage/' . $data->dokumen) }}"
+                   target="_blank"
+                   class="btn btn-outline-primary btn-block btn-sm">
+                    <i class="fas fa-search-plus mr-1"></i>
+                    Lihat Foto Full
+                </a>
+
+            @else
+
+                <a href="{{ asset('storage/' . $data->dokumen) }}"
+                   target="_blank"
+                   class="btn btn-danger btn-block">
+                    <i class="fas fa-file-pdf mr-2"></i>
+                    Lihat Dokumen
+                </a>
+
+            @endif
+
+        @else
+
+            <div class="py-4">
+                <i class="fas fa-image fa-4x text-light mb-3"></i>
+                <p class="text-muted small">
+                    Tidak ada dokumentasi yang diunggah.
+                </p>
             </div>
+
+        @endif
+
+    </div>
+</div>
         </div>
     </div>
 </div>

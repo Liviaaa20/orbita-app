@@ -14,33 +14,22 @@ class Perbaikan extends Model
     protected $fillable = [
         'no_tiket',
         'alat_id',
-
-        // Foto
         'foto_awal',
-        'foto_selesai',
-
-        // Tanggal
         'tgl_permintaan',
         'tgl_diterima',
         'tgl_selesai',
-        'tgl_validasi',
-        'tgl_verifikasi',
-
-        // User
         'user',
-
-        // Informasi Perbaikan
         'kategori_perbaikan',
         'keterangan',
+        'validasi',
         'catatan',
-        'catatan_teknisi',
-
-        // Approval
+        'status',
+        'foto_selesai',
         'validasi_koordinator',
         'verifikasi_selesai',
-
-        // Status
-        'status',
+        'tgl_validasi',
+        'tgl_verifikasi',
+        'catatan_teknisi',
     ];
 
     protected $casts = [
@@ -49,71 +38,57 @@ class Perbaikan extends Model
         'tgl_selesai'    => 'datetime',
         'tgl_validasi'   => 'datetime',
         'tgl_verifikasi' => 'datetime',
-
+        'validasi'             => 'boolean',
         'validasi_koordinator' => 'boolean',
         'verifikasi_selesai'   => 'boolean',
     ];
 
-    /*
-    |----------------------------------------------------------------------
-    | RELATIONSHIP
-    |----------------------------------------------------------------------
-    */
-
     public function alat()
     {
-        return $this->belongsTo(Alat::class);
+        return $this->belongsTo(Alat::class, 'alat_id');
     }
 
     /*
     |----------------------------------------------------------------------
-    | ACCESSOR STATUS LABEL (FIXED + COMPLETE)
+    | ACCESSOR STATUS LABEL
     |----------------------------------------------------------------------
+    | FIX: kolom 'status' di DB adalah ENUM('pending','onproses','selesai')
+    | SAJA. Value 'disetujui', 'ditolak', dan 'menunggu_verifikasi' BUKAN
+    | bagian dari enum tersebut dan tidak akan pernah benar-benar tersimpan
+    | di kolom 'status' (lihat PerbaikanController::validasi() &
+    | ::update() — keduanya sudah disesuaikan untuk hanya memakai 3 value
+    | enum yang valid). Arm-arm tersebut dihapus dari match supaya tidak
+    | menyesatkan; kondisi "ditolak"/"menunggu verifikasi" sebenarnya
+    | direpresentasikan lewat kombinasi kolom lain:
+    |   - Ditolak di awal       -> status='pending' & validasi=0
+    |   - Menunggu verifikasi   -> status='selesai' & validasi_koordinator=null
+    |   - Ditolak koordinator   -> status='onproses' & catatan='Ditolak Koordinator'
+    | Gunakan helper isMenungguVerifikasiKoordinator() / isPernahDitolak()
+    | di bawah untuk mengecek kondisi-kondisi tersebut di Blade.
     */
-
     public function getStatusLabelAttribute()
     {
+        if ($this->isMenungguVerifikasiKoordinator()) {
+            return 'Menunggu Verifikasi Koordinator';
+        }
+
         return match ($this->status) {
-
-            // awal laporan
-            'pending' => 'Menunggu Validasi',
-
-            // admin / teknisi
-            'disetujui' => 'Disetujui',
-            'ditolak' => 'Ditolak',
-
-            // proses teknisi
+            'pending'  => 'Menunggu Validasi',
             'onproses' => 'Sedang Dikerjakan',
-
-            // tahap akhir sebelum koordinator
-            'menunggu_verifikasi' => 'Menunggu Verifikasi Koordinator',
-
-            // selesai final
-            'selesai' => 'Selesai',
-
-            default => ucfirst($this->status),
+            'selesai'  => 'Selesai',
+            default    => ucfirst($this->status),
         };
     }
 
     /*
     |----------------------------------------------------------------------
-    | OPTIONAL: HELPER STATUS CHECK (biar enak di blade nanti)
+    | HELPER STATUS CHECK (biar enak di blade)
     |----------------------------------------------------------------------
     */
 
     public function isPending()
     {
         return $this->status === 'pending';
-    }
-
-    public function isDisetujui()
-    {
-        return $this->status === 'disetujui';
-    }
-
-    public function isDitolak()
-    {
-        return $this->status === 'ditolak';
     }
 
     public function isOnProses()
@@ -124,5 +99,23 @@ class Perbaikan extends Model
     public function isSelesai()
     {
         return $this->status === 'selesai';
+    }
+
+    /** Tiket pernah ditolak saat validasi awal (status tetap 'pending', validasi=0) */
+    public function isPernahDitolak()
+    {
+        return $this->status === 'pending' && $this->validasi === false;
+    }
+
+    /** Tiket sudah selesai dikerjakan teknisi, menunggu ACC/Tolak dari koordinator */
+    public function isMenungguVerifikasiKoordinator()
+    {
+        return $this->status === 'selesai' && is_null($this->validasi_koordinator);
+    }
+
+    /** Tiket sudah final disetujui koordinator */
+    public function isAccKoordinator()
+    {
+        return $this->status === 'selesai' && $this->validasi_koordinator === true;
     }
 }

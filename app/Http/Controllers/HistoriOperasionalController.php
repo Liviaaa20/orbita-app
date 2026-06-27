@@ -199,7 +199,8 @@ class HistoriOperasionalController extends Controller
               ->setOption('isRemoteEnabled', true)      // Tambahkan ini
               ->setOption('isHtml5ParserEnabled', true); // Tambahkan ini
         
-        return $pdf->stream('Riwayat_Alat_'.$data->alat->nama_alat.'.pdf');
+        return $pdf->stream(
+    'Riwayat_Alat_' . ($data->alat?->nama_alat ?? 'Tanpa_Alat') . '.pdf');
     }
 
     public function downloadSingle($id)

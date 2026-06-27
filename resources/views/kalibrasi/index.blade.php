@@ -294,6 +294,14 @@
                         <button id="resetFilter" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;" title="Reset">
                             <i class="fas fa-redo-alt"></i>
                         </button>
+                        {{-- Ganti tombol Cetak PDF lama dengan ini --}}
+                        <button type="button"
+                                data-toggle="modal"
+                                data-target="#modalCetakPdf"
+                                class="btn btn-sm font-weight-semibold px-3"
+                                style="border-radius:8px; background:#003366; color:#fff; border:none; white-space:nowrap;">
+                            <i class="fas fa-file-pdf mr-1"></i>Cetak PDF
+                        </button>
                     </div>
                 </div>
             </div>
@@ -419,6 +427,230 @@
 
 </div>{{-- /container-fluid --}}
 
+{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
+{{-- MODAL CETAK PDF — Rentang Bulan                                            --}}
+{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modalCetakPdf" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:460px;" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:14px; overflow:hidden;">
+
+            {{-- Header --}}
+            <div class="modal-header py-3 px-4 border-0"
+                 style="background:linear-gradient(135deg,#003366,#004d99);">
+                <div>
+                    <h6 class="modal-title text-white font-weight-bold mb-0" style="font-size:1rem;">
+                        <i class="fas fa-file-pdf mr-2"></i>Cetak Laporan Kalibrasi
+                    </h6>
+                    <small class="text-white-50">Tentukan rentang periode laporan</small>
+                </div>
+                <button type="button" class="close text-white" data-dismiss="modal"
+                        style="opacity:1; font-size:1.1rem; margin-top:-8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="modal-body px-4 pt-4 pb-2">
+
+                {{-- Step indicator --}}
+                <div class="d-flex align-items-center mb-4" style="gap:0;">
+                    <div class="step-pill active" id="stepPill1">
+                        <span class="step-num">1</span>
+                        <span class="step-lbl">Bulan Awal</span>
+                    </div>
+                    <div style="flex:1; height:2px; background:#e0e7f0; position:relative; top:-1px;">
+                        <div id="stepLine" style="height:100%; width:0%; background:#003366; transition:width .3s;"></div>
+                    </div>
+                    <div class="step-pill" id="stepPill2">
+                        <span class="step-num">2</span>
+                        <span class="step-lbl">Bulan Akhir</span>
+                    </div>
+                </div>
+
+                {{-- Panel Step 1: Bulan Awal --}}
+                <div id="panelStep1">
+                    <p class="text-muted mb-3" style="font-size:0.82rem;">
+                        <i class="fas fa-info-circle mr-1" style="color:#003366;"></i>
+                        Pilih <strong>bulan dan tahun awal</strong> periode laporan.
+                    </p>
+
+                    {{-- Grid Bulan --}}
+                    <label class="font-weight-semibold mb-2 d-block" style="font-size:0.85rem; color:#1a1a2e;">
+                        Bulan
+                    </label>
+                    <div class="row no-gutters mb-3" id="bulanGridDari">
+                        @php $namaBulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']; @endphp
+                        @foreach($namaBulan as $idx => $nama)
+                        <div class="col-3 p-1">
+                            <button type="button" class="btn btn-bln-dari w-100 font-weight-semibold"
+                                    data-bulan="{{ $idx + 1 }}"
+                                    style="border-radius:8px; font-size:0.78rem; padding:8px 4px;
+                                           border:2px solid #e0e7f0; background:#fff; color:#333; transition:all .15s;">
+                                {{ $nama }}
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Pilih Tahun --}}
+                    <label class="font-weight-semibold mb-2 d-block" style="font-size:0.85rem; color:#1a1a2e;">
+                        Tahun
+                    </label>
+                    <div class="d-flex align-items-center" style="gap:8px;">
+                        <button type="button" id="btnDariPrev"
+                                class="btn btn-outline-secondary btn-sm"
+                                style="border-radius:8px; width:34px; height:34px; padding:0; flex-shrink:0;">
+                            <i class="fas fa-chevron-left" style="font-size:0.65rem;"></i>
+                        </button>
+                        <div id="tahunGridDari" class="d-flex flex-wrap justify-content-center" style="flex:1; gap:6px;"></div>
+                        <button type="button" id="btnDariNext"
+                                class="btn btn-outline-secondary btn-sm"
+                                style="border-radius:8px; width:34px; height:34px; padding:0; flex-shrink:0;">
+                            <i class="fas fa-chevron-right" style="font-size:0.65rem;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Panel Step 2: Bulan Akhir --}}
+                <div id="panelStep2" class="d-none">
+                    <p class="text-muted mb-3" style="font-size:0.82rem;">
+                        <i class="fas fa-info-circle mr-1" style="color:#003366;"></i>
+                        Pilih <strong>bulan dan tahun akhir</strong> periode laporan.
+                    </p>
+
+                    {{-- Grid Bulan --}}
+                    <label class="font-weight-semibold mb-2 d-block" style="font-size:0.85rem; color:#1a1a2e;">
+                        Bulan
+                    </label>
+                    <div class="row no-gutters mb-3" id="bulanGridSampai">
+                        @foreach($namaBulan as $idx => $nama)
+                        <div class="col-3 p-1">
+                            <button type="button" class="btn btn-bln-sampai w-100 font-weight-semibold"
+                                    data-bulan="{{ $idx + 1 }}"
+                                    style="border-radius:8px; font-size:0.78rem; padding:8px 4px;
+                                           border:2px solid #e0e7f0; background:#fff; color:#333; transition:all .15s;">
+                                {{ $nama }}
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Pilih Tahun --}}
+                    <label class="font-weight-semibold mb-2 d-block" style="font-size:0.85rem; color:#1a1a2e;">
+                        Tahun
+                    </label>
+                    <div class="d-flex align-items-center" style="gap:8px;">
+                        <button type="button" id="btnSampaiPrev"
+                                class="btn btn-outline-secondary btn-sm"
+                                style="border-radius:8px; width:34px; height:34px; padding:0; flex-shrink:0;">
+                            <i class="fas fa-chevron-left" style="font-size:0.65rem;"></i>
+                        </button>
+                        <div id="tahunGridSampai" class="d-flex flex-wrap justify-content-center" style="flex:1; gap:6px;"></div>
+                        <button type="button" id="btnSampaiNext"
+                                class="btn btn-outline-secondary btn-sm"
+                                style="border-radius:8px; width:34px; height:34px; padding:0; flex-shrink:0;">
+                            <i class="fas fa-chevron-right" style="font-size:0.65rem;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Preview Rentang --}}
+                <div id="previewRentang" class="d-none mt-3 px-3 py-2 rounded"
+                     style="background:#e8f4fd; border-left:3px solid #003366; font-size:0.82rem;">
+                    <i class="fas fa-check-circle mr-1" style="color:#003366;"></i>
+                    Periode: <strong id="labelRentang" style="color:#003366;"></strong>
+                </div>
+
+                {{-- Peringatan urutan salah --}}
+                <div id="warningUrutan" class="d-none mt-3 px-3 py-2 rounded"
+                     style="background:#fff3cd; border-left:3px solid #ffc107; font-size:0.82rem;">
+                    <i class="fas fa-exclamation-triangle mr-1" style="color:#856404;"></i>
+                    <span style="color:#856404;">Bulan akhir tidak boleh lebih awal dari bulan awal.</span>
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="modal-footer border-0 px-4 pb-4 pt-3">
+                <div class="d-flex justify-content-between w-100" style="gap:8px;">
+
+                    {{-- Kiri: Batal / Kembali --}}
+                    <div>
+                        <button type="button" id="btnBatalModal"
+                                class="btn btn-outline-secondary font-weight-semibold px-4"
+                                style="border-radius:8px;" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Batal
+                        </button>
+                        <button type="button" id="btnKembali"
+                                class="btn btn-outline-secondary font-weight-semibold px-4 d-none"
+                                style="border-radius:8px;">
+                            <i class="fas fa-arrow-left mr-1"></i>Kembali
+                        </button>
+                    </div>
+
+                    {{-- Kanan: Lanjut / Download --}}
+                    <div>
+                        <button type="button" id="btnLanjut"
+                                class="btn font-weight-semibold px-4 text-white"
+                                disabled
+                                style="border-radius:8px; background:linear-gradient(135deg,#003366,#004d99);
+                                       border:none; opacity:.5; transition:opacity .2s;">
+                            Lanjut <i class="fas fa-arrow-right ml-1"></i>
+                        </button>
+                        <button type="button" id="btnDownloadPdf"
+                                class="btn font-weight-semibold px-4 text-white d-none"
+                                disabled
+                                style="border-radius:8px; background:linear-gradient(135deg,#003366,#004d99);
+                                       border:none; opacity:.5; transition:opacity .2s;">
+                            <i class="fas fa-download mr-2"></i>Download PDF
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.step-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #e0e7f0;
+    color: #888;
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .25s;
+}
+.step-lbl {
+    font-size: 0.7rem;
+    color: #aaa;
+    font-weight: 600;
+    transition: color .25s;
+}
+.step-pill.active .step-num {
+    background: #003366;
+    color: #fff;
+}
+.step-pill.active .step-lbl {
+    color: #003366;
+}
+.step-pill.done .step-num {
+    background: #28a745;
+    color: #fff;
+}
+.step-pill.done .step-lbl {
+    color: #28a745;
+}
+</style>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════ --}}
 {{-- MODAL LIGHTBOX PRATINJAU                                                   --}}
@@ -704,5 +936,246 @@ document.addEventListener('DOMContentLoaded', function () {
 function escHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── 4. SINKRONKAN FILTER KE TOMBOL CETAK PDF ─────────────────────────
+var btnCetakPdf = document.getElementById('btnCetakPdf');
+var baseUrlCetak = '{{ route('kalibrasi.cetak_pdf') }}';
+
+function updateCetakUrl() {
+    if (!btnCetakPdf) return;
+    var params = new URLSearchParams();
+    if (filterKategori && filterKategori.value) {
+        params.set('kategori_id', filterKategori.value);
+    }
+    if (filterBulan && filterBulan.value) {
+        params.set('bulan', filterBulan.value);
+    }
+    btnCetakPdf.href = baseUrlCetak + (params.toString() ? '?' + params.toString() : '');
+}
+
+if (filterKategori) filterKategori.addEventListener('change', updateCetakUrl);
+if (filterBulan)    filterBulan.addEventListener('change', updateCetakUrl);
+if (resetFilter)    resetFilter.addEventListener('click', function () {
+    // ... (kode reset yang sudah ada) ...
+    updateCetakUrl(); // tambahkan ini di akhir handler reset yang sudah ada
+});
+// ── 4. MODAL CETAK PDF — Rentang Bulan ──────────────────────────────────────
+(function () {
+    var TAHUN_PER_PAGE = 8;
+    var baseUrl = '{{ route('kalibrasi.cetak_pdf') }}';
+    var namaBulanPanjang = [
+        '', 'Januari','Februari','Maret','April','Mei','Juni',
+        'Juli','Agustus','September','Oktober','November','Desember'
+    ];
+
+    // State
+    var state = {
+        step      : 1,
+        dari      : { bulan: null, tahun: null, page: 0 },
+        sampai    : { bulan: null, tahun: null, page: 0 },
+    };
+
+    // ── Elemen ──
+    var elStep1      = document.getElementById('panelStep1');
+    var elStep2      = document.getElementById('panelStep2');
+    var pill1        = document.getElementById('stepPill1');
+    var pill2        = document.getElementById('stepPill2');
+    var stepLine     = document.getElementById('stepLine');
+    var previewBox   = document.getElementById('previewRentang');
+    var labelRentang = document.getElementById('labelRentang');
+    var warningEl    = document.getElementById('warningUrutan');
+    var btnLanjut    = document.getElementById('btnLanjut');
+    var btnDownload  = document.getElementById('btnDownloadPdf');
+    var btnKembali   = document.getElementById('btnKembali');
+    var btnBatal     = document.getElementById('btnBatalModal');
+
+    // ── Render grid tahun ──
+    function renderTahunGrid(gridId, stateObj, prevId, nextId) {
+        var grid    = document.getElementById(gridId);
+        var btnPrev = document.getElementById(prevId);
+        var btnNext = document.getElementById(nextId);
+        if (!grid) return;
+
+        var tahunNow = new Date().getFullYear();
+        var start    = tahunNow - (stateObj.page * TAHUN_PER_PAGE);
+        var end      = start - TAHUN_PER_PAGE + 1;
+
+        grid.innerHTML = '';
+        for (var t = start; t >= end; t--) {
+            (function(tahun) {
+                var btn       = document.createElement('button');
+                btn.type      = 'button';
+                btn.className = 'btn font-weight-semibold';
+                btn.textContent = tahun;
+                btn.style.cssText =
+                    'border-radius:8px; font-size:0.78rem; padding:6px 10px; min-width:58px;' +
+                    'border:2px solid #e0e7f0; background:#fff; color:#333; transition:all .15s;';
+
+                if (tahun === stateObj.tahun) {
+                    btn.style.background  = '#003366';
+                    btn.style.color       = '#fff';
+                    btn.style.borderColor = '#003366';
+                }
+                btn.addEventListener('click', function () {
+                    stateObj.tahun = tahun;
+                    renderTahunGrid(gridId, stateObj, prevId, nextId);
+                    checkStep();
+                });
+                grid.appendChild(btn);
+            })(t);
+        }
+
+        if (btnPrev) btnPrev.disabled = false;
+        if (btnNext) btnNext.disabled = (stateObj.page === 0);
+    }
+
+    // ── Navigasi tahun ──
+    function bindNav(prevId, nextId, stateObj, gridId) {
+        var p = document.getElementById(prevId);
+        var n = document.getElementById(nextId);
+        if (p) p.addEventListener('click', function() {
+            stateObj.page++;
+            renderTahunGrid(gridId, stateObj, prevId, nextId);
+        });
+        if (n) n.addEventListener('click', function() {
+            if (stateObj.page > 0) {
+                stateObj.page--;
+                renderTahunGrid(gridId, stateObj, prevId, nextId);
+            }
+        });
+    }
+    bindNav('btnDariPrev',   'btnDariNext',   state.dari,   'tahunGridDari');
+    bindNav('btnSampaiPrev', 'btnSampaiNext', state.sampai, 'tahunGridSampai');
+
+    // ── Grid bulan ──
+    function bindBulanGrid(selector, stateObj) {
+        document.querySelectorAll(selector).forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                stateObj.bulan = parseInt(this.dataset.bulan);
+                document.querySelectorAll(selector).forEach(function (b) {
+                    b.style.background  = '#fff';
+                    b.style.color       = '#333';
+                    b.style.borderColor = '#e0e7f0';
+                });
+                this.style.background  = '#003366';
+                this.style.color       = '#fff';
+                this.style.borderColor = '#003366';
+                checkStep();
+            });
+        });
+    }
+    bindBulanGrid('.btn-bln-dari',   state.dari);
+    bindBulanGrid('.btn-bln-sampai', state.sampai);
+
+    // ── Validasi urutan ──
+    function isUrutanValid() {
+        if (!state.dari.bulan || !state.dari.tahun || !state.sampai.bulan || !state.sampai.tahun) return true;
+        var d = state.dari.tahun   * 100 + state.dari.bulan;
+        var s = state.sampai.tahun * 100 + state.sampai.bulan;
+        return s >= d;
+    }
+
+    // ── Cek state & update UI ──
+    function checkStep() {
+        var dariLengkap   = state.dari.bulan   && state.dari.tahun;
+        var sampaiLengkap = state.sampai.bulan && state.sampai.tahun;
+
+        if (state.step === 1) {
+            // Aktifkan tombol Lanjut jika bulan & tahun awal sudah dipilih
+            btnLanjut.disabled      = !dariLengkap;
+            btnLanjut.style.opacity = dariLengkap ? '1' : '.5';
+
+        } else {
+            // Step 2: validasi urutan
+            var valid = isUrutanValid();
+            warningEl.classList.toggle('d-none', valid || !sampaiLengkap);
+
+            if (sampaiLengkap && valid) {
+                // Tampilkan preview
+                var lbl = namaBulanPanjang[state.dari.bulan]   + ' ' + state.dari.tahun
+                        + ' – '
+                        + namaBulanPanjang[state.sampai.bulan] + ' ' + state.sampai.tahun;
+                labelRentang.textContent = lbl;
+                previewBox.classList.remove('d-none');
+
+                btnDownload.disabled      = false;
+                btnDownload.style.opacity = '1';
+            } else {
+                previewBox.classList.add('d-none');
+                btnDownload.disabled      = true;
+                btnDownload.style.opacity = '.5';
+            }
+        }
+    }
+
+    // ── Step navigation ──
+    function goStep(n) {
+        state.step = n;
+
+        if (n === 1) {
+            elStep1.classList.remove('d-none');
+            elStep2.classList.add('d-none');
+
+            pill1.className = 'step-pill active';
+            pill2.className = 'step-pill';
+            stepLine.style.width = '0%';
+
+            btnLanjut.classList.remove('d-none');
+            btnDownload.classList.add('d-none');
+            btnKembali.classList.add('d-none');
+            btnBatal.classList.remove('d-none');
+
+            previewBox.classList.add('d-none');
+            warningEl.classList.add('d-none');
+            checkStep();
+
+        } else {
+            elStep1.classList.add('d-none');
+            elStep2.classList.remove('d-none');
+
+            pill1.className = 'step-pill done';
+            pill2.className = 'step-pill active';
+            stepLine.style.width = '100%';
+
+            btnLanjut.classList.add('d-none');
+            btnDownload.classList.remove('d-none');
+            btnKembali.classList.remove('d-none');
+            btnBatal.classList.add('d-none');
+
+            // Render tahun grid step 2 saat pertama masuk
+            renderTahunGrid('tahunGridSampai', state.sampai, 'btnSampaiPrev', 'btnSampaiNext');
+            checkStep();
+        }
+    }
+
+    btnLanjut.addEventListener('click', function () {
+        if (state.dari.bulan && state.dari.tahun) goStep(2);
+    });
+    btnKembali.addEventListener('click', function () { goStep(1); });
+
+    // ── Download ──
+    btnDownload.addEventListener('click', function () {
+        if (!isUrutanValid()) return;
+        var dari   = state.dari.tahun   + '-' + String(state.dari.bulan).padStart(2, '0');
+        var sampai = state.sampai.tahun + '-' + String(state.sampai.bulan).padStart(2, '0');
+        window.open(baseUrl + '?dari=' + dari + '&sampai=' + sampai, '_blank');
+    });
+
+    // ── Reset saat modal dibuka ──
+    $('#modalCetakPdf').on('show.bs.modal', function () {
+        state.dari   = { bulan: null, tahun: null, page: 0 };
+        state.sampai = { bulan: null, tahun: null, page: 0 };
+
+        // Reset styling bulan
+        document.querySelectorAll('.btn-bln-dari, .btn-bln-sampai').forEach(function (b) {
+            b.style.background  = '#fff';
+            b.style.color       = '#333';
+            b.style.borderColor = '#e0e7f0';
+        });
+
+        goStep(1);
+        renderTahunGrid('tahunGridDari', state.dari, 'btnDariPrev', 'btnDariNext');
+    });
+})();
 </script>
 @endsection

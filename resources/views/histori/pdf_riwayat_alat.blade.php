@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Riwayat Peralatan - {{ $data->alat->nama_alat }}</title>
+    <title>Riwayat Peralatan -{{ optional($data->alat)->nama_alat ?? 'Tanpa Alat' }}</title>
     <style>
         body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.4; }
         .kop { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; }
@@ -35,7 +35,7 @@
 
     <div class="title">RIWAYAT PERALATAN</div>
     <div class="text-center">
-        Nama Alat: {{ $data->alat->nama_alat }} <br>
+        Nama Alat: {{ $data->alat->nama_alat ?? '-' }} <br>
         Tahun Pengadaan: {{ $data->alat->tahun_pengadaan ?? '-' }}
     </div>
 

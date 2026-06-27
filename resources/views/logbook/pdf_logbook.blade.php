@@ -234,13 +234,17 @@
         }
 
         .paraf-img-wrapper{
-            height:45px;
-            margin:3px auto;
+            height:55px;
+            width:120px;
+            margin:0 auto 4px auto;
+            text-align:center;
         }
 
         .paraf-img-wrapper img{
-            max-height:45px;
-            max-width:100px;
+            display:block;
+            width:auto;
+            height:50px;
+            margin:0 auto;
         }
 
         .paraf-kosong-line{
@@ -293,12 +297,9 @@
 
             <td class="header-logo">
                 @php
-                    $logoPath = public_path('assets/dist/img/logo.png');
+                    $logo = base64_encode(file_get_contents(public_path('assets/dist/img/logo.png')));
                 @endphp
-
-                @if(file_exists($logoPath))
-                    <img src="{{ $logoPath }}">
-                @endif
+                <img src="data:image/png;base64,{{ $logo }}" width="45">
             </td>
 
             <td class="header-title">
@@ -485,143 +486,101 @@
 
     @endif
 
-    {{-- TTD --}}
-    <div class="section-paraf">
+{{-- TTD --}}
+<div class="section-paraf">
 
-        <table class="paraf-table">
+    <table class="paraf-table">
+        <tr>
 
-            <tr>
+            {{-- DIBUAT OLEH --}}
+            <td>
 
-                {{-- DIBUAT --}}
-                <td>
+                <div class="paraf-label">
+                    Dibuat Oleh
+                </div>
 
-                    <div class="paraf-label">
-                        Dibuat Oleh
-                    </div>
+                <div class="paraf-tanggal">
+                    {{ $logbook->created_at?->isoFormat('D MMMM YYYY') }}
+                </div>
 
-                    <div class="paraf-tanggal">
-                        {{ $logbook->created_at?->isoFormat('D MMMM YYYY') }}
-                    </div>
+                @php
+                $ttd = base64_encode(file_get_contents(public_path('assets/dist/img/TTD/Triyono.png')));
+                @endphp
 
-                    <span class="paraf-kosong-line"></span>
+               <div class="paraf-img-wrapper">
+                    <img src="data:image/png;base64,{{ $ttd }}" height="45">
+                </div>
 
-                    <div class="paraf-garis">
-                        {{ $logbook->createdBy->name ?? '-' }}
-                    </div>
+                <div class="paraf-garis">
+                    Triyono
+                </div>
 
-                    <div class="paraf-nip">
-                        NIP. {{ $logbook->createdBy->nip ?? '-' }}
-                    </div>
+                <div class="paraf-nip">
+                    NIP. {{ $logbook->createdBy->nip ?? '-' }}
+                </div>
 
-                </td>
+            </td>
 
-                {{-- KAPOK --}}
-                <td>
+            {{-- KEPALA KELOMPOK --}}
+            <td>
 
-                    <div class="paraf-label">
-                        Mengetahui, Kepala Kelompok
-                    </div>
+                <div class="paraf-label">
+                    Mengetahui, Kepala Kelompok
+                </div>
 
-                    @if(in_array($logbook->status, ['approved_kapok', 'pending_koordinator', 'approved_final']))
+                <div class="paraf-tanggal">
+                    {{ $logbook->approved_kapok_at?->isoFormat('D MMMM YYYY') }}
+                </div>
 
-                        <div class="paraf-tanggal">
-                            {{ $logbook->approved_kapok_at?->isoFormat('D MMMM YYYY') }}
-                        </div>
+                @php
+                    $ttd = base64_encode(file_get_contents(public_path('assets/dist/img/TTD/joko.png')));
+                @endphp
 
-                        @php
-                            $parafKapokPath = public_path('assets/dist/img/TTD/parafKapok.png');
-                        @endphp
+                <div class="paraf-img-wrapper">
+                    <img src="data:image/png;base64,{{ $ttd }}" height="45">
+                </div>
 
-                        <div class="paraf-img-wrapper">
+                <div class="paraf-garis">
+                    {{ $logbook->approvedKapokOleh->name ?? 'Joko' }}
+                </div>
 
-                            @if(file_exists($parafKapokPath))
-                                <img src="{{ $parafKapokPath }}">
-                            @endif
+                <div class="paraf-nip">
+                    NIP. {{ $logbook->approvedKapokOleh->nip ?? '-' }}
+                </div>
 
-                        </div>
+            </td>
 
-                        <div class="paraf-garis">
-                            {{ $logbook->approvedKapokOleh->name ?? '-' }}
-                        </div>
+            {{-- KOORDINATOR --}}
+            <td>
 
-                        <div class="paraf-nip">
-                            NIP. {{ $logbook->approvedKapokOleh->nip ?? '-' }}
-                        </div>
+                <div class="paraf-label">
+                    Menyetujui, Koordinator
+                </div>
 
-                    @else
+                <div class="paraf-tanggal">
+                    &nbsp;
+                </div>
 
-                        <div class="paraf-tanggal">&nbsp;</div>
+                <div class="paraf-img-wrapper">
+                    {{-- Kosong --}}
+                </div>
 
-                        <span class="paraf-kosong-line"></span>
+                <span class="paraf-kosong-line"></span>
 
-                        <div class="paraf-garis">
-                            ( __________________ )
-                        </div>
+                <div class="paraf-garis">
+                    ( __________________ )
+                </div>
 
-                        <div class="paraf-nip">
-                            NIP.
-                        </div>
+                <div class="paraf-nip">
+                    NIP.
+                </div>
 
-                    @endif
+            </td>
 
-                </td>
+        </tr>
+    </table>
 
-                {{-- KOORDINATOR --}}
-                <td>
-
-                    <div class="paraf-label">
-                        Menyetujui, Koordinator
-                    </div>
-
-                    @if($logbook->status === 'approved_final')
-
-                        <div class="paraf-tanggal">
-                            {{ $logbook->approved_koordinator_at?->isoFormat('D MMMM YYYY') }}
-                        </div>
-
-                        @php
-                            $parafKoordPath = public_path('assets/dist/img/TTD/parafKoordinator.png');
-                        @endphp
-
-                        <div class="paraf-img-wrapper">
-
-                            @if(file_exists($parafKoordPath))
-                                <img src="{{ $parafKoordPath }}">
-                            @endif
-
-                        </div>
-
-                        <div class="paraf-garis">
-                            {{ $logbook->approvedKoordinatorOleh->name ?? '-' }}
-                        </div>
-
-                        <div class="paraf-nip">
-                            NIP. {{ $logbook->approvedKoordinatorOleh->nip ?? '-' }}
-                        </div>
-
-                    @else
-
-                        <div class="paraf-tanggal">&nbsp;</div>
-
-                        <span class="paraf-kosong-line"></span>
-
-                        <div class="paraf-garis">
-                            ( __________________ )
-                        </div>
-
-                        <div class="paraf-nip">
-                            NIP.
-                        </div>
-
-                    @endif
-
-                </td>
-
-            </tr>
-
-        </table>
-
-    </div>
+</div>
 
     {{-- FOOTER --}}
     <div class="footer-doc">

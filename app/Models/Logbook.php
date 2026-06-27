@@ -35,6 +35,12 @@ class Logbook extends Model
     // ============================================================
     // RELASI
     // ============================================================
+    // CATATAN: Logbook merepresentasikan satu KATEGORI (yang mencakup
+    // banyak Alat melalui Kategori -> SubKategori -> Alat), bukan satu
+    // Alat/SubKategori spesifik. Tabel 'logbooks' tidak memiliki kolom
+    // 'sub_kategori_id', sehingga TIDAK ADA relasi subKategori() di sini
+    // — gunakan kategori() lalu turunkan daftar alat lewat getAlats().
+    // ============================================================
 
     public function kategori()
     {
