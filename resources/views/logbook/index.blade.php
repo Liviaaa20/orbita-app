@@ -14,6 +14,14 @@
     ];
     $tahunSekarangPeriode = now()->year;
     $daftarTahunPeriode   = range($tahunSekarangPeriode - 3, $tahunSekarangPeriode + 2);
+
+    // BARU: parsing old('periode_tersedia') supaya dropdown Bulan & Tahun
+    // ikut ter-restore kalau form gagal validasi (misal ID Logbook dobel)
+    // dan modal harus dibuka ulang dengan data yang sudah diisi sebelumnya.
+    $oldPeriodeTersedia = old('periode_tersedia', '');
+    $potonganOldPeriode = trim($oldPeriodeTersedia) !== '' ? explode(' ', trim($oldPeriodeTersedia)) : [];
+    $oldTahunPeriode     = count($potonganOldPeriode) > 1 ? array_pop($potonganOldPeriode) : null;
+    $oldBulanPeriode     = implode(' ', $potonganOldPeriode);
 @endphp
 
 <style>
@@ -252,7 +260,7 @@
                 <table class="table table-hover mb-0" style="font-size: 0.875rem;">
                     <thead class="bg-light font-weight-semibold border-bottom">
                         <tr>
-                            <th class="border-0 py-3 pl-4" style="width: 50px;">No</th>
+                            <th class="border-0 py-3 pl-4" style="width: 90px;">ID</th>
                             <th class="border-0 py-3">Jenis Logbook</th>
                             <th class="border-0 py-3">Kategori</th>  {{-- DIUBAH dari Sub Kategori --}}
                             <th class="border-0 py-3">Lokasi</th>
@@ -265,8 +273,8 @@
                     <tbody>
                         @forelse($logbooks as $log)
                         <tr>
-                            <td class="py-3 pl-4 text-muted font-weight-bold">
-                                {{ ($logbooks->currentPage() - 1) * $logbooks->perPage() + $loop->iteration }}
+                            <td class="py-3 pl-4 font-weight-bold" style="color:#003366;">
+                                {{ $log->kode_logbook ?? '-' }}
                             </td>
                             <td class="py-3">
                                 <div class="font-weight-semibold">{{ $log->jenis_logbook }}</div>
@@ -332,6 +340,7 @@
                                                 data-toggle="modal" data-target="#modalEditLogbook"
                                                 onclick="pemicuEdit(this)"
                                                 data-id="{{ $log->id }}"
+                                                data-kode_logbook="{{ $log->kode_logbook }}"
                                                 data-kategori_id="{{ $log->kategori_id }}"
                                                 data-jenis_logbook="{{ $log->jenis_logbook }}"
                                                 data-jenis_alat="{{ $log->jenis_alat }}"
@@ -455,32 +464,47 @@
             </div>
             <form action="{{ route('logbook.store') }}" method="POST" class="form-logbook-bertingkat" data-prefix="tambah">
                 @csrf
+                <input type="hidden" name="form_marker" value="tambah_logbook">
                 <div class="modal-body">
 
-                    {{-- 1. KATEGORI --}}
+                    {{-- 1. ID LOGBOOK (BARU: manual, harus unik) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">1. Kategori <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">1. ID Logbook <span class="text-danger">*</span></label>
+                        <input type="text" name="kode_logbook" class="form-control @error('kode_logbook') is-invalid @enderror"
+                               style="border-radius: 8px; height: 46px;"
+                               placeholder="Contoh: LB001" maxlength="50" value="{{ old('kode_logbook') }}" required>
+                        @error('kode_logbook')
+                            <div class="invalid-feedback">
+                                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+                            </div>
+                        @enderror
+                        <small class="text-muted">ID unik untuk logbook ini, isi manual (misal: LB001, LB002, dst). Tidak boleh sama dengan logbook lain.</small>
+                    </div>
+
+                    {{-- 2. KATEGORI --}}
+                    <div class="form-group">
+                        <label class="font-weight-semibold mb-2">2. Kategori <span class="text-danger">*</span></label>
                         <select name="kategori_id" class="form-control select-kategori" data-prefix="tambah"
                                 style="border-radius: 8px; height: 46px;" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($kategoris as $kat)
-                                <option value="{{ $kat->id }}">{{ $kat->nama_kategori }}</option>
+                                <option value="{{ $kat->id }}" {{ old('kategori_id') == $kat->id ? 'selected' : '' }}>{{ $kat->nama_kategori }}</option>
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- 2. SUB KATEGORI (tidak disimpan ke logbook, hanya untuk filter alat) --}}
+                    {{-- 3. SUB KATEGORI (tidak disimpan ke logbook, hanya untuk filter alat) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">2. Sub Kategori <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">3. Sub Kategori <span class="text-danger">*</span></label>
                         <select class="form-control select-sub-kategori" data-prefix="tambah"
                                 style="border-radius: 8px; height: 46px;" disabled>
                             <option value="">-- Pilih Kategori Dahulu --</option>
                         </select>
                     </div>
 
-                    {{-- 3. ALAT (preview saja, TIDAK dikirim ke server) --}}
+                    {{-- 4. ALAT (preview saja, TIDAK dikirim ke server) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">3. Data Alat (Referensi) <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">4. Data Alat (Referensi) <span class="text-danger">*</span></label>
                         <select class="form-control select-alat" data-prefix="tambah"
                                 style="border-radius: 8px; height: 46px;" disabled>
                             <option value="">-- Pilih Sub Kategori Dahulu --</option>
@@ -497,37 +521,37 @@
 
                     <hr class="my-3">
 
-                    {{-- 4. JENIS LOGBOOK (BARU: otomatis, readonly) --}}
+                    {{-- 5. JENIS LOGBOOK (otomatis, readonly) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">4. Jenis Logbook <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">5. Jenis Logbook <span class="text-danger">*</span></label>
                         <input type="text" name="jenis_logbook" class="form-control input-jenis-logbook field-otomatis" data-prefix="tambah"
                                style="border-radius: 8px; height: 46px;"
-                               placeholder="Otomatis terisi setelah Kategori dipilih" readonly required>
+                               placeholder="Otomatis terisi setelah Kategori dipilih" value="{{ old('jenis_logbook') }}" readonly required>
                         <small class="text-muted">Format otomatis: "Logbook Peralatan [Kategori]"</small>
                     </div>
 
                     {{-- jenis_alat: otomatis terisi dari Sub Kategori, readonly --}}
-                    <input type="hidden" name="jenis_alat" class="input-jenis-alat-hidden" data-prefix="tambah">
+                    <input type="hidden" name="jenis_alat" class="input-jenis-alat-hidden" data-prefix="tambah" value="{{ old('jenis_alat') }}">
 
-                    {{-- BARU: Lokasi otomatis dari data Alat, readonly --}}
+                    {{-- Lokasi otomatis dari data Alat, readonly --}}
                     <div class="form-group">
                         <label class="font-weight-semibold mb-2">Lokasi <span class="text-danger">*</span></label>
                         <input type="text" name="lokasi_tempat" class="form-control input-lokasi-tempat field-otomatis" data-prefix="tambah"
                                style="border-radius: 8px; height: 46px;"
-                               placeholder="Otomatis terisi setelah Alat dipilih" readonly required>
+                               placeholder="Otomatis terisi setelah Alat dipilih" value="{{ old('lokasi_tempat') }}" readonly required>
                         <small class="text-muted">Diambil dari data lokasi pada menu Data Alat.</small>
                     </div>
 
-                    {{-- 5. PERIODE (BARU: pilih Bulan + Tahun, bukan ketik manual) --}}
+                    {{-- 6. PERIODE (pilih Bulan + Tahun, bukan ketik manual) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">5. Periode <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">6. Periode <span class="text-danger">*</span></label>
                         <div class="row">
                             <div class="col-7">
                                 <select class="form-control select-periode-bulan" data-prefix="tambah"
                                         style="border-radius: 8px; height: 46px;" required>
                                     <option value="">-- Pilih Bulan --</option>
                                     @foreach($namaBulanIndo as $nb)
-                                        <option value="{{ $nb }}">{{ $nb }}</option>
+                                        <option value="{{ $nb }}" {{ $oldBulanPeriode === $nb ? 'selected' : '' }}>{{ $nb }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -536,12 +560,12 @@
                                         style="border-radius: 8px; height: 46px;" required>
                                     <option value="">-- Tahun --</option>
                                     @foreach($daftarTahunPeriode as $thn)
-                                        <option value="{{ $thn }}">{{ $thn }}</option>
+                                        <option value="{{ $thn }}" {{ (string) $oldTahunPeriode === (string) $thn ? 'selected' : '' }}>{{ $thn }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
-                        <input type="hidden" name="periode_tersedia" class="input-periode-tersedia" data-prefix="tambah">
+                        <input type="hidden" name="periode_tersedia" class="input-periode-tersedia" data-prefix="tambah" value="{{ old('periode_tersedia') }}">
                     </div>
                 </div>
                 <div class="modal-footer border-0" style="background: #f8f9fa; border-radius: 0 0 12px 12px;">
@@ -566,9 +590,18 @@
                 @method('PUT')
                 <div class="modal-body">
 
-                    {{-- 1. KATEGORI --}}
+                    {{-- 1. ID LOGBOOK (BARU: manual, harus unik) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">1. Kategori <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">1. ID Logbook <span class="text-danger">*</span></label>
+                        <input type="text" name="kode_logbook" id="edit_kode_logbook" class="form-control"
+                               style="border-radius: 8px; height: 46px;"
+                               placeholder="Contoh: LB001" maxlength="50" required>
+                        <small class="text-muted">ID unik untuk logbook ini. Tidak boleh sama dengan logbook lain.</small>
+                    </div>
+
+                    {{-- 2. KATEGORI --}}
+                    <div class="form-group">
+                        <label class="font-weight-semibold mb-2">2. Kategori <span class="text-danger">*</span></label>
                         <select name="kategori_id" id="edit_kategori_id" class="form-control select-kategori" data-prefix="edit"
                                 style="border-radius: 8px; height: 46px;" required>
                             <option value="">-- Pilih Kategori --</option>
@@ -578,18 +611,18 @@
                         </select>
                     </div>
 
-                    {{-- 2. SUB KATEGORI --}}
+                    {{-- 3. SUB KATEGORI --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">2. Sub Kategori <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">3. Sub Kategori <span class="text-danger">*</span></label>
                         <select class="form-control select-sub-kategori" data-prefix="edit"
                                 style="border-radius: 8px; height: 46px;" disabled>
                             <option value="">-- Pilih Kategori Dahulu --</option>
                         </select>
                     </div>
 
-                    {{-- 3. ALAT (preview saja) --}}
+                    {{-- 4. ALAT (preview saja) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">3. Data Alat (Referensi) <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">4. Data Alat (Referensi) <span class="text-danger">*</span></label>
                         <select class="form-control select-alat" data-prefix="edit"
                                 style="border-radius: 8px; height: 46px;" disabled>
                             <option value="">-- Pilih Sub Kategori Dahulu --</option>
@@ -606,10 +639,10 @@
 
                     <hr class="my-3">
 
-                    {{-- 4. JENIS LOGBOOK (BARU: otomatis, readonly. Nilai lama dipertahankan
+                    {{-- 5. JENIS LOGBOOK (otomatis, readonly. Nilai lama dipertahankan
                          kecuali Kategori benar-benar diganti) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">4. Jenis Logbook <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">5. Jenis Logbook <span class="text-danger">*</span></label>
                         <input type="text" name="jenis_logbook" id="edit_jenis_logbook" class="form-control input-jenis-logbook field-otomatis" data-prefix="edit"
                                style="border-radius: 8px; height: 46px;" readonly required>
                         <small class="text-muted">Otomatis terisi ulang hanya kalau Kategori diganti.</small>
@@ -617,7 +650,7 @@
 
                     <input type="hidden" name="jenis_alat" id="edit_jenis_alat" class="input-jenis-alat-hidden" data-prefix="edit">
 
-                    {{-- BARU: Lokasi otomatis dari data Alat, readonly. Nilai lama dipertahankan
+                    {{-- Lokasi otomatis dari data Alat, readonly. Nilai lama dipertahankan
                          kecuali Alat dipilih ulang --}}
                     <div class="form-group">
                         <label class="font-weight-semibold mb-2">Lokasi <span class="text-danger">*</span></label>
@@ -626,9 +659,9 @@
                         <small class="text-muted">Otomatis terisi ulang hanya kalau Alat dipilih ulang.</small>
                     </div>
 
-                    {{-- 5. PERIODE (BARU: pilih Bulan + Tahun, bukan ketik manual) --}}
+                    {{-- 6. PERIODE (pilih Bulan + Tahun, bukan ketik manual) --}}
                     <div class="form-group">
-                        <label class="font-weight-semibold mb-2">5. Periode <span class="text-danger">*</span></label>
+                        <label class="font-weight-semibold mb-2">6. Periode <span class="text-danger">*</span></label>
                         <div class="row">
                             <div class="col-7">
                                 <select class="form-control select-periode-bulan" data-prefix="edit"
@@ -754,6 +787,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function pemicuEdit(element) {
+        document.getElementById('edit_kode_logbook').value  = element.getAttribute('data-kode_logbook');
         document.getElementById('edit_kategori_id').value    = element.getAttribute('data-kategori_id');
         document.getElementById('edit_jenis_logbook').value  = element.getAttribute('data-jenis_logbook');
         document.getElementById('edit_jenis_alat').value     = element.getAttribute('data-jenis_alat');

@@ -10,6 +10,7 @@ class Logbook extends Model
     use HasFactory;
 
     protected $fillable = [
+        'kode_logbook', // BARU: ID logbook yang diisi manual oleh teknisi (misal: LB001)
         'kategori_id',
         'jenis_logbook',
         'jenis_alat',

@@ -237,14 +237,18 @@ class LogbookController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'kode_logbook'     => 'required|string|max:50|unique:logbooks,kode_logbook',
             'kategori_id'      => 'required|exists:kategoris,id',
             'jenis_logbook'    => 'required|string|max:255',
             'jenis_alat'       => 'required|string|max:255',
             'lokasi_tempat'    => 'required|string|max:255',
             'periode_tersedia' => 'required|string|max:255',
+        ], [], [
+            'kode_logbook' => 'ID Logbook',
         ]);
 
         Logbook::create([
+            'kode_logbook'        => $request->kode_logbook,
             'kategori_id'         => $request->kategori_id,
             'jenis_logbook'       => $request->jenis_logbook,
             'jenis_alat'          => $request->jenis_alat,
@@ -265,11 +269,14 @@ class LogbookController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
+            'kode_logbook'     => 'required|string|max:50|unique:logbooks,kode_logbook,' . $id,
             'kategori_id'      => 'required|exists:kategoris,id',
             'jenis_logbook'    => 'required|string|max:255',
             'jenis_alat'       => 'required|string|max:255',
             'lokasi_tempat'    => 'required|string|max:255',
             'periode_tersedia' => 'required|string|max:255',
+        ], [], [
+            'kode_logbook' => 'ID Logbook',
         ]);
 
         $logbook = Logbook::findOrFail($id);
@@ -280,6 +287,7 @@ class LogbookController extends Controller
         }
 
         $logbook->update([
+            'kode_logbook'        => $request->kode_logbook,
             'kategori_id'         => $request->kategori_id,
             'jenis_logbook'       => $request->jenis_logbook,
             'jenis_alat'          => $request->jenis_alat,

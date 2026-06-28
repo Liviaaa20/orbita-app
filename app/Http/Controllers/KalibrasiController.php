@@ -64,13 +64,50 @@ class KalibrasiController extends Controller
         $kategoris  = Kategori::all();
         $canInput   = $this->canInput();
 
-        return view('kalibrasi.index', compact('kalibrasis', 'kategoris', 'canInput'));
+        // Daftar Institusi Kalibrator unik untuk dropdown "Filter Kalibrator"
+        // di halaman index. Diambil dari data yang sudah ada (bukan tabel master
+        // terpisah), karena kolom 'kalibrator' di tabel kalibrasis memang free-text.
+        $opsiKalibrator = Kalibrasi::pluck('kalibrator')
+            ->map(fn ($k) => trim($k))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return view('kalibrasi.index', compact('kalibrasis', 'kategoris', 'canInput', 'opsiKalibrator'));
     }
 
     public function store(Request $request)
     {
         if (!$this->canInput()) {
             abort(403, 'Anda tidak memiliki akses untuk menambah data kalibrasi.');
+        }
+
+        /*
+        |-------------------------------------------------------------------
+        | BARU: Validasi Kode ID (wajib + unik)
+        |-------------------------------------------------------------------
+        | Dicek MANUAL terlebih dahulu (bukan lewat rule 'unique' di
+        | $request->validate) supaya pesan error duplikat bisa ditangani
+        | dengan flash data custom sendiri ('kode_id_error'), TANPA
+        | menyentuh $errors bawaan Laravel sama sekali. Ini diminta agar
+        | tampilan errornya tidak memakai pola @error()/$errors->any()
+        | yang sudah dipakai untuk field lain di form ini.
+        */
+        if (!$request->filled('kode_id')) {
+            return redirect()->back()
+                ->withInput()
+                ->with('kode_id_error', 'Kode ID wajib diisi.');
+        }
+
+        $kodeId = trim($request->kode_id);
+
+        $sudahAda = Kalibrasi::where('kode_id', $kodeId)->exists();
+
+        if ($sudahAda) {
+            return redirect()->back()
+                ->withInput()
+                ->with('kode_id_error', "Kode ID \"{$kodeId}\" sudah digunakan oleh data kalibrasi lain. Silakan gunakan kode yang berbeda.");
         }
 
         $request->validate([
@@ -93,6 +130,7 @@ class KalibrasiController extends Controller
             }
 
             Kalibrasi::create([
+                'kode_id'              => $kodeId,
                 'kategori_id'          => $request->kategori_id,
                 'tanggal_mulai'        => $request->tanggal_mulai,
                 'tanggal_selesai'      => $request->tanggal_selesai,
@@ -117,6 +155,25 @@ class KalibrasiController extends Controller
 
             DB::commit();
             return redirect()->back()->with('success', 'Data kalibrasi berhasil ditambahkan!');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+
+            DB::rollBack();
+
+            // Jaga-jaga race condition: dua request hampir bersamaan lolos
+            // pengecekan exists() di atas, lalu sama-sama insert kode_id
+            // yang sama. Constraint unik di DB akan menolak salah satunya
+            // dengan error code 23000 (duplicate entry) — tangkap di sini
+            // juga, sekali lagi TANPA memakai $errors bawaan Laravel.
+            if ((string) $e->getCode() === '23000') {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('kode_id_error', "Kode ID \"{$kodeId}\" sudah digunakan oleh data kalibrasi lain. Silakan gunakan kode yang berbeda.");
+            }
+
+            return redirect()->back()
+                ->with('error', 'Gagal menyimpan data: ' . $e->getMessage())
+                ->withInput();
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -153,48 +210,49 @@ class KalibrasiController extends Controller
             'Content-Disposition' => 'inline; filename="sertifikat_kalibrasi_' . $id . '.' . $ekstensi . '"',
         ]);
     }
-public function cetakPdf(Request $request)
-{
-    if (!$this->canView()) {
-        abort(403, 'Anda tidak memiliki akses.');
+
+    public function cetakPdf(Request $request)
+    {
+        if (!$this->canView()) {
+            abort(403, 'Anda tidak memiliki akses.');
+        }
+
+        $query = Kalibrasi::with('kategori')->latest();
+
+        // Filter rentang: dari=Y-m, sampai=Y-m
+        if ($request->filled('dari') && $request->filled('sampai')) {
+            [$tahunDari,  $bulanDari]  = explode('-', $request->dari);
+            [$tahunSampai, $bulanSampai] = explode('-', $request->sampai);
+
+            $tanggalDari   = \Carbon\Carbon::createFromDate($tahunDari,  $bulanDari,  1)->startOfMonth();
+            $tanggalSampai = \Carbon\Carbon::createFromDate($tahunSampai, $bulanSampai, 1)->endOfMonth();
+
+            $query->whereBetween('tanggal_mulai', [$tanggalDari, $tanggalSampai]);
+        }
+
+        $kalibrasis   = $query->get();
+        $kategoris    = Kategori::all();
+        $user         = Auth::user();
+        $tanggalCetak = now()->translatedFormat('d F Y');
+
+        // Label periode untuk header PDF
+        $labelPeriode = null;
+        if ($request->filled('dari') && $request->filled('sampai')) {
+            $labelPeriode =
+                \Carbon\Carbon::createFromFormat('Y-m', $request->dari)->translatedFormat('F Y')
+                . ' – ' .
+                \Carbon\Carbon::createFromFormat('Y-m', $request->sampai)->translatedFormat('F Y');
+        }
+
+        $pdf = Pdf::loadView('kalibrasi.cetak_pdf', compact(
+            'kalibrasis', 'kategoris', 'user', 'tanggalCetak', 'labelPeriode', 'request'
+        ))->setPaper('a4', 'landscape');
+
+        $namaFile = 'Riwayat_Kalibrasi_'
+            . ($request->dari    ? str_replace('-', '', $request->dari)    : '')
+            . ($request->sampai  ? '-' . str_replace('-', '', $request->sampai) : '')
+            . '.pdf';
+
+        return $pdf->download($namaFile);
     }
-
-    $query = Kalibrasi::with('kategori')->latest();
-
-    // Filter rentang: dari=Y-m, sampai=Y-m
-    if ($request->filled('dari') && $request->filled('sampai')) {
-        [$tahunDari,  $bulanDari]  = explode('-', $request->dari);
-        [$tahunSampai, $bulanSampai] = explode('-', $request->sampai);
-
-        $tanggalDari   = \Carbon\Carbon::createFromDate($tahunDari,  $bulanDari,  1)->startOfMonth();
-        $tanggalSampai = \Carbon\Carbon::createFromDate($tahunSampai, $bulanSampai, 1)->endOfMonth();
-
-        $query->whereBetween('tanggal_mulai', [$tanggalDari, $tanggalSampai]);
-    }
-
-    $kalibrasis   = $query->get();
-    $kategoris    = Kategori::all();
-    $user         = Auth::user();
-    $tanggalCetak = now()->translatedFormat('d F Y');
-
-    // Label periode untuk header PDF
-    $labelPeriode = null;
-    if ($request->filled('dari') && $request->filled('sampai')) {
-        $labelPeriode =
-            \Carbon\Carbon::createFromFormat('Y-m', $request->dari)->translatedFormat('F Y')
-            . ' – ' .
-            \Carbon\Carbon::createFromFormat('Y-m', $request->sampai)->translatedFormat('F Y');
-    }
-
-    $pdf = Pdf::loadView('kalibrasi.cetak_pdf', compact(
-        'kalibrasis', 'kategoris', 'user', 'tanggalCetak', 'labelPeriode', 'request'
-    ))->setPaper('a4', 'landscape');
-
-    $namaFile = 'Riwayat_Kalibrasi_'
-        . ($request->dari    ? str_replace('-', '', $request->dari)    : '')
-        . ($request->sampai  ? '-' . str_replace('-', '', $request->sampai) : '')
-        . '.pdf';
-
-    return $pdf->download($namaFile);
-}
 }

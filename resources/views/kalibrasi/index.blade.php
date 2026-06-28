@@ -36,6 +36,19 @@
             <i class="fas fa-exclamation-circle mr-2"></i> {{ session('error') }}
         </div>
     @endif
+    {{--
+        BARU: Alert khusus untuk error Kode ID (kosong/duplikat).
+        Sengaja TIDAK memakai @error('kode_id') / $errors->any() bawaan
+        Laravel — controller mengirim pesan ini lewat session flash
+        'kode_id_error' secara manual (lihat KalibrasiController::store()),
+        supaya teksnya bisa dikustom penuh dan field Kode ID bisa
+        di-highlight + auto-scroll oleh JS di bawah.
+    --}}
+    @if(session('kode_id_error'))
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center" style="border-radius:8px;" id="alertKodeIdError">
+            <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('kode_id_error') }}
+        </div>
+    @endif
 
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     {{-- FORM INPUT — hanya Admin & Teknisi                                     --}}
@@ -57,8 +70,26 @@
                        style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
 
                 <div class="row">
+                    {{-- BARU: Kode ID --}}
+                    <div class="col-md-3 form-group">
+                        <label class="font-weight-semibold mb-2" style="font-size:0.9rem;">
+                            Kode ID <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="kode_id" id="inputKodeId"
+                               value="{{ old('kode_id') }}"
+                               class="form-control {{ session('kode_id_error') ? 'is-invalid' : '' }}"
+                               style="border-radius:8px; height:46px; text-transform:uppercase;"
+                               placeholder="Contoh: KLB001" required>
+                        @if(session('kode_id_error'))
+                            <div class="invalid-feedback d-block">
+                                <i class="fas fa-exclamation-circle mr-1"></i>{{ session('kode_id_error') }}
+                            </div>
+                        @endif
+                        <small class="text-muted">Kode unik untuk identitas data kalibrasi ini.</small>
+                    </div>
+
                     {{-- Kategori --}}
-                    <div class="col-md-6 form-group">
+                    <div class="col-md-4 form-group">
                         <label class="font-weight-semibold mb-2" style="font-size:0.9rem;">
                             Kategori Alat <span class="text-danger">*</span>
                         </label>
@@ -78,7 +109,7 @@
                     </div>
 
                     {{-- Kalibrator --}}
-                    <div class="col-md-6 form-group">
+                    <div class="col-md-5 form-group">
                         <label class="font-weight-semibold mb-2" style="font-size:0.9rem;">
                             Institusi Kalibrator <span class="text-danger">*</span>
                         </label>
@@ -272,6 +303,20 @@
                                 @endforeach
                             </select>
                         </div>
+                        {{-- Filter Kalibrator --}}
+                        <div class="input-group input-group-sm" style="width:190px;">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light border">
+                                    <i class="fas fa-building text-muted"></i>
+                                </span>
+                            </div>
+                            <select id="filterKalibrator" class="form-control border">
+                                <option value="">Semua Kalibrator</option>
+                                @foreach($opsiKalibrator as $kal)
+                                    <option value="{{ strtolower($kal) }}">{{ $kal }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         {{-- Filter Bulan --}}
                         <div class="input-group input-group-sm" style="width:160px;">
                             <div class="input-group-prepend">
@@ -294,7 +339,7 @@
                         <button id="resetFilter" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;" title="Reset">
                             <i class="fas fa-redo-alt"></i>
                         </button>
-                        {{-- Ganti tombol Cetak PDF lama dengan ini --}}
+                        {{-- Cetak PDF --}}
                         <button type="button"
                                 data-toggle="modal"
                                 data-target="#modalCetakPdf"
@@ -313,6 +358,8 @@
                     <thead class="bg-light text-dark font-weight-semibold border-bottom">
                         <tr>
                             <th class="border-0 py-3 pl-4" style="width:50px;">No</th>
+                            {{-- BARU: kolom Kode ID --}}
+                            <th class="border-0 py-3">Kode ID</th>
                             <th class="border-0 py-3">Kategori</th>
                             <th class="border-0 py-3">Periode</th>
                             <th class="border-0 py-3">Kalibrator</th>
@@ -326,8 +373,9 @@
                         @forelse($kalibrasis as $data)
                         @php
                             $katNama = strtolower($data->kategori->nama_kategori ?? '');
+                            $kalNama = strtolower(trim($data->kalibrator ?? ''));
                             $bulan   = \Carbon\Carbon::parse($data->tanggal_mulai)->format('Y-m');
-                            $cari    = strtolower(($data->kategori->nama_kategori ?? '') . ' ' . $data->kalibrator . ' ' . ($data->petugas ?? ''));
+                            $cari    = strtolower(($data->kode_id ?? '') . ' ' . ($data->kategori->nama_kategori ?? '') . ' ' . $data->kalibrator . ' ' . ($data->petugas ?? ''));
                             $ext     = $data->sertifikat_pdf
                                         ? strtolower(pathinfo($data->sertifikat_pdf, PATHINFO_EXTENSION))
                                         : '';
@@ -335,10 +383,23 @@
                         @endphp
                         <tr class="filter-row"
                             data-kategori="{{ $katNama }}"
+                            data-kalibrator="{{ $kalNama }}"
                             data-bulan="{{ $bulan }}"
                             data-cari="{{ $cari }}">
 
                             <td class="py-3 pl-4 text-muted font-weight-bold">{{ $loop->iteration }}</td>
+
+                            {{-- BARU: tampilkan Kode ID --}}
+                            <td class="py-3">
+                                @if($data->kode_id)
+                                    <span class="badge font-weight-bold px-3 py-2"
+                                          style="background:#003366; color:#fff; font-size:0.75rem; letter-spacing:.03em;">
+                                        {{ $data->kode_id }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
 
                             <td class="py-3">
                                 <span class="badge font-weight-medium px-3 py-2"
@@ -401,7 +462,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <i class="fas fa-folder-open fa-2x mb-3 d-block" style="opacity:.3;"></i>
                                 <span class="font-weight-medium">Belum ada riwayat kalibrasi</span>
                             </td>
@@ -688,23 +749,39 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
+    // ── 0. BARU: Auto-scroll & fokus ke field Kode ID jika ada error ───────
+    @if(session('kode_id_error'))
+        var alertKodeId = document.getElementById('alertKodeIdError');
+        var inputKodeId = document.getElementById('inputKodeId');
+        if (alertKodeId) {
+            alertKodeId.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (inputKodeId) {
+            inputKodeId.focus();
+            inputKodeId.select();
+        }
+    @endif
+
     // ── 1. FILTER & SEARCH ──────────────────────────────────────────────────
-    var filterKategori = document.getElementById('filterKategori');
-    var filterBulan    = document.getElementById('filterBulan');
-    var tableSearch    = document.getElementById('tableSearch');
-    var resetFilter    = document.getElementById('resetFilter');
-    var rows           = document.querySelectorAll('.filter-row');
-    var totalDataSpan  = document.getElementById('totalData');
+    var filterKategori   = document.getElementById('filterKategori');
+    var filterKalibrator = document.getElementById('filterKalibrator');
+    var filterBulan      = document.getElementById('filterBulan');
+    var tableSearch      = document.getElementById('tableSearch');
+    var resetFilter      = document.getElementById('resetFilter');
+    var rows             = document.querySelectorAll('.filter-row');
+    var totalDataSpan    = document.getElementById('totalData');
 
     function applyFilters() {
-        var kat  = filterKategori ? filterKategori.value.toLowerCase() : '';
-        var bln  = filterBulan    ? filterBulan.value : '';
-        var cari = tableSearch    ? tableSearch.value.toLowerCase().trim() : '';
+        var kat  = filterKategori   ? filterKategori.value.toLowerCase()   : '';
+        var kal  = filterKalibrator ? filterKalibrator.value.toLowerCase() : '';
+        var bln  = filterBulan      ? filterBulan.value                    : '';
+        var cari = tableSearch      ? tableSearch.value.toLowerCase().trim() : '';
         var count = 0;
         rows.forEach(function (row) {
             var show =
-                (!kat  || row.dataset.kategori === kat) &&
-                (!bln  || row.dataset.bulan    === bln) &&
+                (!kat  || row.dataset.kategori   === kat) &&
+                (!kal  || row.dataset.kalibrator === kal) &&
+                (!bln  || row.dataset.bulan      === bln) &&
                 (!cari || row.dataset.cari.includes(cari));
             row.style.display = show ? '' : 'none';
             if (show) count++;
@@ -712,13 +789,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (totalDataSpan) totalDataSpan.textContent = count;
     }
 
-    if (filterKategori) filterKategori.addEventListener('change', applyFilters);
-    if (filterBulan)    filterBulan.addEventListener('change', applyFilters);
-    if (tableSearch)    tableSearch.addEventListener('input', applyFilters);
-    if (resetFilter)    resetFilter.addEventListener('click', function () {
-        if (filterKategori) filterKategori.value = '';
-        if (filterBulan)    filterBulan.value    = '';
-        if (tableSearch)    tableSearch.value    = '';
+    if (filterKategori)   filterKategori.addEventListener('change', applyFilters);
+    if (filterKalibrator) filterKalibrator.addEventListener('change', applyFilters);
+    if (filterBulan)      filterBulan.addEventListener('change', applyFilters);
+    if (tableSearch)      tableSearch.addEventListener('input', applyFilters);
+    if (resetFilter)      resetFilter.addEventListener('click', function () {
+        if (filterKategori)   filterKategori.value   = '';
+        if (filterKalibrator) filterKalibrator.value = '';
+        if (filterBulan)      filterBulan.value       = '';
+        if (tableSearch)      tableSearch.value       = '';
         applyFilters();
     });
 
@@ -730,7 +809,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var modalLoading = document.getElementById('modalLoading');
 
     function bukaModal(url, ext, judul) {
-        // Reset semua elemen
         modalImg.classList.add('d-none');    modalImg.src    = '';
         modalIframe.classList.add('d-none'); modalIframe.src = '';
         if (modalLoading) modalLoading.classList.remove('d-none');
@@ -756,14 +834,12 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#modalPreview').modal('show');
     }
 
-    // Tombol Preview di tabel riwayat
     document.querySelectorAll('.btn-preview-tabel').forEach(function (btn) {
         btn.addEventListener('click', function () {
             bukaModal(this.dataset.url, this.dataset.ext, 'Pratinjau Sertifikat');
         });
     });
 
-    // Bersihkan src saat modal ditutup
     $('#modalPreview').on('hidden.bs.modal', function () {
         modalImg.src    = '';
         modalIframe.src = '';
@@ -783,16 +859,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var perbesarBtn      = document.getElementById('btnPerbesar');
     var resetBtn         = document.getElementById('btnReset');
 
-    if (!dropZone || !fileInput) return; // halaman view-only tidak punya form
+    if (!dropZone || !fileInput) return;
 
     var currentObjectURL = null;
 
-    // Klik drop zone → buka file dialog
     dropZone.addEventListener('click', function () {
         fileInput.click();
     });
 
-    // Drag & drop
     dropZone.addEventListener('dragover', function (e) {
         e.preventDefault();
         this.style.background = '#dceeff';
@@ -816,7 +890,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Perubahan file input
     fileInput.addEventListener('change', function () {
         if (this.files && this.files.length) {
             handleFile(this.files[0]);
@@ -824,7 +897,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function handleFile(file) {
-        var maxSize = 10 * 1024 * 1024; // 10 MB
+        var maxSize = 10 * 1024 * 1024;
         var allowed = ['application/pdf', 'image/jpeg', 'image/png'];
 
         if (file.size > maxSize) {
@@ -838,7 +911,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Tampilkan preview
         previewContainer.classList.remove('d-none');
         previewImage.classList.add('d-none');
         previewPdf.classList.add('d-none');
@@ -847,14 +919,12 @@ document.addEventListener('DOMContentLoaded', function () {
         var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
         if (fileInfoEl) fileInfoEl.textContent = file.name + '  •  ' + sizeMB + ' MB';
 
-        // Buat Object URL (lebih efisien dari base64)
         if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
         currentObjectURL = URL.createObjectURL(file);
 
         if (file.type === 'application/pdf') {
             previewPdf.src = currentObjectURL;
             previewPdf.classList.remove('d-none');
-            // Beberapa browser blokir blob PDF di iframe; fallback ke icon
             previewPdf.onerror = function () {
                 previewPdf.classList.add('d-none');
                 if (previewIcon) {
@@ -867,7 +937,6 @@ document.addEventListener('DOMContentLoaded', function () {
             previewImage.classList.remove('d-none');
         }
 
-        // Update drop zone UI
         dropZone.style.borderColor = '#28a745';
         dropZone.style.background  = '#f0fff4';
         dropZone.innerHTML =
@@ -877,7 +946,6 @@ document.addEventListener('DOMContentLoaded', function () {
             '</p>' +
             '<small class="text-muted">Klik untuk ganti berkas</small>';
 
-        // Tombol Perbesar
         if (perbesarBtn) {
             perbesarBtn.disabled = false;
             perbesarBtn.onclick = function (e) {
@@ -887,7 +955,6 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
-        // Klik gambar langsung → perbesar
         previewImage.onclick = function () {
             if (currentObjectURL) bukaModal(currentObjectURL, 'jpg', file.name);
         };
@@ -929,7 +996,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('formKalibrasi').reset();
     });
 
-    // Nonaktifkan tombol perbesar saat awal (belum ada file)
     if (perbesarBtn) perbesarBtn.disabled = true;
 });
 
@@ -937,28 +1003,6 @@ function escHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── 4. SINKRONKAN FILTER KE TOMBOL CETAK PDF ─────────────────────────
-var btnCetakPdf = document.getElementById('btnCetakPdf');
-var baseUrlCetak = '{{ route('kalibrasi.cetak_pdf') }}';
-
-function updateCetakUrl() {
-    if (!btnCetakPdf) return;
-    var params = new URLSearchParams();
-    if (filterKategori && filterKategori.value) {
-        params.set('kategori_id', filterKategori.value);
-    }
-    if (filterBulan && filterBulan.value) {
-        params.set('bulan', filterBulan.value);
-    }
-    btnCetakPdf.href = baseUrlCetak + (params.toString() ? '?' + params.toString() : '');
-}
-
-if (filterKategori) filterKategori.addEventListener('change', updateCetakUrl);
-if (filterBulan)    filterBulan.addEventListener('change', updateCetakUrl);
-if (resetFilter)    resetFilter.addEventListener('click', function () {
-    // ... (kode reset yang sudah ada) ...
-    updateCetakUrl(); // tambahkan ini di akhir handler reset yang sudah ada
-});
 // ── 4. MODAL CETAK PDF — Rentang Bulan ──────────────────────────────────────
 (function () {
     var TAHUN_PER_PAGE = 8;
@@ -968,14 +1012,12 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
         'Juli','Agustus','September','Oktober','November','Desember'
     ];
 
-    // State
     var state = {
         step      : 1,
         dari      : { bulan: null, tahun: null, page: 0 },
         sampai    : { bulan: null, tahun: null, page: 0 },
     };
 
-    // ── Elemen ──
     var elStep1      = document.getElementById('panelStep1');
     var elStep2      = document.getElementById('panelStep2');
     var pill1        = document.getElementById('stepPill1');
@@ -989,7 +1031,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
     var btnKembali   = document.getElementById('btnKembali');
     var btnBatal     = document.getElementById('btnBatalModal');
 
-    // ── Render grid tahun ──
     function renderTahunGrid(gridId, stateObj, prevId, nextId) {
         var grid    = document.getElementById(gridId);
         var btnPrev = document.getElementById(prevId);
@@ -1029,7 +1070,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
         if (btnNext) btnNext.disabled = (stateObj.page === 0);
     }
 
-    // ── Navigasi tahun ──
     function bindNav(prevId, nextId, stateObj, gridId) {
         var p = document.getElementById(prevId);
         var n = document.getElementById(nextId);
@@ -1047,7 +1087,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
     bindNav('btnDariPrev',   'btnDariNext',   state.dari,   'tahunGridDari');
     bindNav('btnSampaiPrev', 'btnSampaiNext', state.sampai, 'tahunGridSampai');
 
-    // ── Grid bulan ──
     function bindBulanGrid(selector, stateObj) {
         document.querySelectorAll(selector).forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -1067,7 +1106,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
     bindBulanGrid('.btn-bln-dari',   state.dari);
     bindBulanGrid('.btn-bln-sampai', state.sampai);
 
-    // ── Validasi urutan ──
     function isUrutanValid() {
         if (!state.dari.bulan || !state.dari.tahun || !state.sampai.bulan || !state.sampai.tahun) return true;
         var d = state.dari.tahun   * 100 + state.dari.bulan;
@@ -1075,23 +1113,19 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
         return s >= d;
     }
 
-    // ── Cek state & update UI ──
     function checkStep() {
         var dariLengkap   = state.dari.bulan   && state.dari.tahun;
         var sampaiLengkap = state.sampai.bulan && state.sampai.tahun;
 
         if (state.step === 1) {
-            // Aktifkan tombol Lanjut jika bulan & tahun awal sudah dipilih
             btnLanjut.disabled      = !dariLengkap;
             btnLanjut.style.opacity = dariLengkap ? '1' : '.5';
 
         } else {
-            // Step 2: validasi urutan
             var valid = isUrutanValid();
             warningEl.classList.toggle('d-none', valid || !sampaiLengkap);
 
             if (sampaiLengkap && valid) {
-                // Tampilkan preview
                 var lbl = namaBulanPanjang[state.dari.bulan]   + ' ' + state.dari.tahun
                         + ' – '
                         + namaBulanPanjang[state.sampai.bulan] + ' ' + state.sampai.tahun;
@@ -1108,7 +1142,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
         }
     }
 
-    // ── Step navigation ──
     function goStep(n) {
         state.step = n;
 
@@ -1142,7 +1175,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
             btnKembali.classList.remove('d-none');
             btnBatal.classList.add('d-none');
 
-            // Render tahun grid step 2 saat pertama masuk
             renderTahunGrid('tahunGridSampai', state.sampai, 'btnSampaiPrev', 'btnSampaiNext');
             checkStep();
         }
@@ -1153,7 +1185,6 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
     });
     btnKembali.addEventListener('click', function () { goStep(1); });
 
-    // ── Download ──
     btnDownload.addEventListener('click', function () {
         if (!isUrutanValid()) return;
         var dari   = state.dari.tahun   + '-' + String(state.dari.bulan).padStart(2, '0');
@@ -1161,12 +1192,10 @@ if (resetFilter)    resetFilter.addEventListener('click', function () {
         window.open(baseUrl + '?dari=' + dari + '&sampai=' + sampai, '_blank');
     });
 
-    // ── Reset saat modal dibuka ──
     $('#modalCetakPdf').on('show.bs.modal', function () {
         state.dari   = { bulan: null, tahun: null, page: 0 };
         state.sampai = { bulan: null, tahun: null, page: 0 };
 
-        // Reset styling bulan
         document.querySelectorAll('.btn-bln-dari, .btn-bln-sampai').forEach(function (b) {
             b.style.background  = '#fff';
             b.style.color       = '#333';
